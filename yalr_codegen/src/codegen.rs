@@ -154,9 +154,10 @@ fn generate_parser_loop(
                 },
                 Some(yalr_core::Action::Reduce(rule_idx)) => {
                     let to_be_popped = parse_table.grammar.rules[*rule_idx].rhs.len();
-                    let children: Vec<_> = stack
+                    let mut children: Vec<_> = stack
                         .drain((stack.len() - to_be_popped)..)
                         .map(|stack_elem| stack_elem.output)
+                        .rev()
                         .collect();
 
                     let state_on_top_of_stack = &parse_table.states[stack.last().unwrap().state];
@@ -226,8 +227,8 @@ fn generate_reduce_match_rhs_tuple(
             yalr::Symbol::Nonterminal(n) => {
                 let n_variant = n.variant_token_stream();
                 quote! {
-                    match children[#symbol_idx] {
-                        Output::UserData(UserData::#n_variant(u)) => u,
+                    match children.pop() {
+                        Some(Output::UserData(UserData::#n_variant(u))) => u,
                         _ => {
                             eprintln!("Fatal error: Expected Output::UserData for nonterminal #n.");
                             panic!("Fatal error: This is a bug in YALR. Please report this.");
@@ -240,7 +241,7 @@ fn generate_reduce_match_rhs_tuple(
                     quote! { (), }
                 } else {
                     quote! {
-                        if let Output::Input(i) = &children[#symbol_idx] {
+                        if let Some(Output::Input(i)) = &children.pop() {
                             i
                         } else {
                             eprintln!("Fatal error: Expected Output::Input for terminal #t.");
