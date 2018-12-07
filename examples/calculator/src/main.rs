@@ -27,6 +27,8 @@ enum Terminal {
     Asterisk,
     #[token = "/"]
     Slash,
+    #[token = "^"]
+    Caret,
     #[regex = r#"(0|[1-9][0-9]*)(\.[0-9]+)?"#]
     Number,
     #[token = "("]
@@ -54,8 +56,15 @@ struct Parser;
 #[output(f32)]
 #[assoc(Left, minus, plus)]
 #[assoc(Left, slash, asterisk)]
+#[assoc(Right, caret)]
 impl Parser {
     // TODO: Add support for priorities
+
+    // Utility function
+    fn parse_str(s: &str) -> Result<f32, Box<dyn std::error::Error>> {
+        let lexer = Terminal::lexer(s);
+        Parser::parse_logos(lexer)
+    }
 
     #[rule(Start -> Expression end)]
     fn start(expr: f32, _end: ()) -> f32 {
@@ -70,6 +79,11 @@ impl Parser {
     #[rule(Expression -> Expression minus Expression)]
     fn expr_sub(left: f32, _minus: &str, right: f32) -> f32 {
         left - right
+    }
+
+    #[rule(Term -> Term caret Term)]
+    fn expr_pow(left: f32, _caret: &str, right: f32) -> f32 {
+        left.powf(right)
     }
 
     #[rule(Expression -> Term)]
@@ -96,6 +110,18 @@ impl Parser {
     fn number(num: &str) -> f32 {
         // TODO: Allow returning Results
         num.parse().unwrap()
+    }
+}
+
+mod test {
+    use super::Parser;
+
+    #[test]
+    fn test_pow() {
+        assert_eq!(256f32, Parser::parse_str("2^8").unwrap());
+        assert_eq!(66f32, Parser::parse_str("2+(2^3)^2").unwrap());
+        assert_eq!(514f32, Parser::parse_str("2+2^3^2").unwrap());
+        assert_eq!(81f32, Parser::parse_str("(2+8-1)^2").unwrap());
     }
 }
 
