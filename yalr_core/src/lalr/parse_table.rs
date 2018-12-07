@@ -390,7 +390,7 @@ where
     /// as leftmost item in the derivation tree.
     ///
     /// Consider the following example:
-    /// ```
+    /// ```ignore
     /// A -> a
     /// A -> B
     /// B -> b
