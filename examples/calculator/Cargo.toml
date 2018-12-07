@@ -1,0 +1,10 @@
+[package]
+name = "calculator"
+version = "0.1.0"
+authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
+edition = "2018"
+
+[dependencies]
+yalr = { path = "../../yalr", features = ["logos"] }
+logos = "0.7"
+lazy_static = "1.1.0"

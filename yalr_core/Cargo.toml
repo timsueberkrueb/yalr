@@ -1,0 +1,13 @@
+[package]
+name = "yalr_core"
+version = "0.1.0"
+authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
+edition = "2018"
+
+[dependencies]
+quote = { version = "0.6", optional = true }
+proc-macro2 = { version = "0.4", optional = true }
+
+[features]
+default = []
+quote_support = ["quote", "proc-macro2"]

@@ -1,0 +1,16 @@
+[package]
+name = "yalr_codegen"
+version = "0.1.0"
+authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
+edition = "2018"
+
+[dependencies]
+regex = "1"
+proc-macro2 = "0.4"
+quote = "0.6"
+combine = "3.6"
+yalr_core = { path ="../yalr_core", features = ["quote_support"] }
+
+[dependencies.syn]
+version = "0.15"
+features = ["full", "extra-traits", "parsing"]

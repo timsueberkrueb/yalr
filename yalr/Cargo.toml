@@ -1,0 +1,15 @@
+[package]
+name = "yalr"
+version = "0.1.0"
+authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
+edition = "2018"
+
+[dependencies]
+yalr_core = { path = "../yalr_core" }
+yalr_proc_macro = { path = "../yalr_proc_macro", optional = true }
+logos = { version = "0.7.4", optional = true }
+
+[features]
+default = ["proc_macro"]
+proc_macro = ["yalr_proc_macro"]
+logos_support = ["logos"]

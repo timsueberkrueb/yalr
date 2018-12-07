@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "yalr",
+    "yalr_codegen",
+    "yalr_core",
+    "yalr_cli",
+    "examples/calculator",
+]

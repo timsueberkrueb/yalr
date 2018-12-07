@@ -1,0 +1,19 @@
+[package]
+name = "yalr_cli"
+version = "0.1.0"
+authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
+edition = "2018"
+
+[dependencies]
+clap = "2.32"
+quote = "0.6"
+proc-macro2 = "0.4"
+prettytable-rs = "0.8"
+tempfile = "3"
+open = "1"
+yalr_core = { path = "../yalr_core" }
+yalr_codegen = { path = "../yalr_codegen" }
+
+[dependencies.syn]
+version = "0.15"
+features = ["full", "extra-traits", "parsing", "visit"]

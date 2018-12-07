@@ -1,0 +1,13 @@
+[package]
+name = "yalr_proc_macro"
+version = "0.1.0"
+authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
+edition = "2018"
+
+[dependencies]
+syn = "0.15"
+yalr_core = { path = "../yalr_core" }
+yalr_codegen = { path = "../yalr_codegen" }
+
+[lib]
+proc-macro = true
