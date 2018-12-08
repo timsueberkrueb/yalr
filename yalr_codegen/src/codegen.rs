@@ -154,9 +154,10 @@ fn generate_parser_loop(
                 },
                 Some(yalr_core::Action::Reduce(rule_idx)) => {
                     let to_be_popped = parse_table.grammar.rules[*rule_idx].rhs.len();
-                    let children: Vec<_> = stack
+                    let mut children: Vec<_> = stack
                         .drain((stack.len() - to_be_popped)..)
                         .map(|stack_elem| stack_elem.output)
+                        .rev()
                         .collect();
 
                     let state_on_top_of_stack = &parse_table.states[stack.last().unwrap().state];
@@ -172,11 +173,11 @@ fn generate_parser_loop(
                     stack.push(new_stack_element);
                 },
                 Some(yalr_core::Action::Accept) => {
-                    let mut children = Vec::new();
                     let to_be_popped = parse_table.grammar.rules[#start_rule_idx].rhs.len();
-                    for i in 0..to_be_popped {
-                        children.push(stack.pop().unwrap().output);
-                    }
+                    let mut children: Vec<_> = stack
+                        .drain((stack.len() - to_be_popped)..)
+                        .map(|stack_elem| stack_elem.output)
+                        .collect();
 
                     let result = Self::#start_rule_ident(#start_rule_rhs_tuple);
                     return Ok(result);
@@ -221,15 +222,15 @@ fn generate_reduce_match_rhs_tuple(
 ) -> proc_macro2::TokenStream {
     let mut rhs_tuple = proc_macro2::TokenStream::new();
 
-    for (symbol_idx, symbol) in rule_fn.rule.rhs.iter().by_ref().enumerate() {
+    for symbol in rule_fn.rule.rhs.iter().by_ref() {
         let result = match symbol {
             yalr::Symbol::Nonterminal(n) => {
                 let n_variant = n.variant_token_stream();
                 quote! {
-                    match children[#symbol_idx] {
-                        Output::UserData(UserData::#n_variant(u)) => u,
+                    match children.pop() {
+                        Some(Output::UserData(UserData::#n_variant(u))) => u,
                         _ => {
-                            eprintln!("Fatal error: Expected Output::UserData for nonterminal #n.");
+                            eprintln!("Fatal error: Expected Output::UserData for nonterminal {}.", #n);
                             panic!("Fatal error: This is a bug in YALR. Please report this.");
                         }
                     },
@@ -240,10 +241,10 @@ fn generate_reduce_match_rhs_tuple(
                     quote! { (), }
                 } else {
                     quote! {
-                        if let Output::Input(i) = &children[#symbol_idx] {
+                        if let Some(Output::Input(i)) = &children.pop() {
                             i
                         } else {
-                            eprintln!("Fatal error: Expected Output::Input for terminal #t.");
+                            eprintln!("Fatal error: Expected Output::Input for terminal {}.", #t);
                             panic!("Fatal error: This is a bug in YALR. Please report this.");
                         },
                     }
