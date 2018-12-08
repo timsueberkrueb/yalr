@@ -26,7 +26,8 @@ pub fn generate_grammar(
                 };
             }
             rule
-        }).collect();
+        })
+        .collect();
 
     yalr::Grammar {
         start,

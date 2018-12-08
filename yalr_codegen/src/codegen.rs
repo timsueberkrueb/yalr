@@ -85,7 +85,7 @@ fn generate_user_data_enum(
     let mut enum_variants = proc_macro2::TokenStream::new();
     for (nonterminal, return_type) in return_types.iter().by_ref() {
         let variant_token_stream = nonterminal.variant_token_stream();
-        enum_variants.extend(quote!{
+        enum_variants.extend(quote! {
             #variant_token_stream(#return_type),
         })
     }
