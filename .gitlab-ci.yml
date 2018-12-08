@@ -1,0 +1,72 @@
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/.cargo
+
+stages:
+  - test
+  - lint
+  - codestyle
+
+test:stable:
+  image: rustlang/rust:stable
+  stage: test
+  before_script:
+    - rustc --version
+    - cargo --version
+  script:
+  - cargo build --verbose --all
+  - cargo test --verbose --all
+  cache:
+    paths:
+      - .cargo
+
+test:beta:
+  image: rustlang/rust:beta
+  stage: test
+  before_script:
+    - rustc --version
+    - cargo --version
+  script:
+  - cargo build --verbose --all
+  - cargo test --verbose --all
+  cache:
+    paths:
+      - .cargo
+
+test:nightly:
+  image: rustlang/rust:nightly
+  stage: test
+  before_script:
+    - rustc --version
+    - cargo --version
+  script:
+  - cargo build --verbose --all
+  - cargo test --verbose --all
+  cache:
+    paths:
+      - .cargo
+
+lint:
+  image: rustlang/rust:stable
+  stage: test
+  before_script:
+    - rustc --version
+    - cargo --version
+  script:
+    - rustup component add clippy
+    - cargo clippy
+  cache:
+    paths:
+      - .cargo
+
+codestyle:
+  image: rustlang/rust:stable
+  stage: test
+  before_script:
+    - rustc --version
+    - cargo --version
+  script:
+    - rustup component add rustfmt-preview
+    - cargo fmt -- --check
+  cache:
+    paths:
+      - .cargo
