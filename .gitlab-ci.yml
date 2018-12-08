@@ -4,33 +4,6 @@ variables:
 stages:
   - test
   - lint
-  - codestyle
-
-test:stable:
-  image: rustlang/rust:stable
-  stage: test
-  before_script:
-    - rustc --version
-    - cargo --version
-  script:
-  - cargo build --verbose --all
-  - cargo test --verbose --all
-  cache:
-    paths:
-      - .cargo
-
-test:beta:
-  image: rustlang/rust:beta
-  stage: test
-  before_script:
-    - rustc --version
-    - cargo --version
-  script:
-  - cargo build --verbose --all
-  - cargo test --verbose --all
-  cache:
-    paths:
-      - .cargo
 
 test:nightly:
   image: rustlang/rust:nightly
@@ -46,8 +19,8 @@ test:nightly:
       - .cargo
 
 lint:
-  image: rustlang/rust:stable
-  stage: test
+  image: rustlang/rust:nightly
+  stage: lint
   before_script:
     - rustc --version
     - cargo --version
@@ -59,8 +32,8 @@ lint:
       - .cargo
 
 codestyle:
-  image: rustlang/rust:stable
-  stage: test
+  image: rustlang/rust:nightly
+  stage: lint
   before_script:
     - rustc --version
     - cargo --version
