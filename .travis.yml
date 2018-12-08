@@ -7,3 +7,13 @@ matrix:
   allow_failures:
     - rust: nightly
   fast_finish: true
+stages:
+  - test
+  - lint
+  - codestyle
+jobs:
+  include:
+    - stage: lint
+      script: cargo clippy
+    - stage: codestyle
+      script: cargo fmt -- --check
