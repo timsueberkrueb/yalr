@@ -1,0 +1,10 @@
+[package]
+name = "yalrjson"
+version = "0.1.0"
+authors = ["Daniel Bicek dev@bicek.de"]
+edition = "2018"
+
+[dependencies]
+yalr = { path = "../../yalr", features = ["logos"] }
+logos = "0.7"
+lazy_static = "1.1.0"

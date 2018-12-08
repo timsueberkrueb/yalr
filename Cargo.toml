@@ -5,6 +5,7 @@ members = [
     "yalr_core",
     "yalr_cli",
     "examples/calculator",
+    "examples/json",
     "tests/test_utils",
     "tests/unknown_terminals",
 ]
