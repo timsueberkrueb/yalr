@@ -13,3 +13,4 @@ logos = { version = "0.7.4", optional = true }
 default = ["proc_macro"]
 proc_macro = ["yalr_proc_macro"]
 logos_support = ["logos"]
+trace = []

@@ -38,6 +38,8 @@ pub fn generate_parser_impl(
 
                 use yalr as yalr_core;
 
+                yalr_trace!("trace is enabled");
+
                 lazy_static! {
                     static ref parse_table: yalr_core::ParseTable<#terminal_type, #nonterminal_type> = {
                         #create_parse_table
@@ -91,6 +93,7 @@ fn generate_user_data_enum(
     }
 
     quote! {
+        #[derive(Debug)]
         enum UserData {
             #enum_variants
         }
@@ -99,6 +102,7 @@ fn generate_user_data_enum(
 
 fn generate_output_enum() -> proc_macro2::TokenStream {
     quote! {
+        #[derive(Debug)]
         enum Output<I> {
             UserData(UserData),
             Input(I),
@@ -109,6 +113,7 @@ fn generate_output_enum() -> proc_macro2::TokenStream {
 
 fn generate_stack_elem_struct() -> proc_macro2::TokenStream {
     quote! {
+        #[derive(Debug)]
         struct StackElem<I>
         {
             pub state: usize,
@@ -143,8 +148,12 @@ fn generate_parser_loop(
         );
 
         loop {
+            yalr_trace!("stack = {:#?}", stack);
+
             match parse_table.states[stack.last().unwrap().state].action_map.get(lexer.terminal()) {
                 Some(yalr_core::Action::Shift(idx)) => {
+                    yalr_trace!("shift {}", idx);
+
                     stack.push(StackElem {
                         state: *idx,
                         output: Output::Input(lexer.slice()),
@@ -153,6 +162,8 @@ fn generate_parser_loop(
                     lexer.advance();
                 },
                 Some(yalr_core::Action::Reduce(rule_idx)) => {
+                    yalr_trace!("reduce {}", rule_idx);
+
                     let to_be_popped = parse_table.grammar.rules[*rule_idx].rhs.len();
                     let mut children: Vec<_> = stack
                         .drain((stack.len() - to_be_popped)..)
@@ -173,6 +184,8 @@ fn generate_parser_loop(
                     stack.push(new_stack_element);
                 },
                 Some(yalr_core::Action::Accept) => {
+                    yalr_trace!("accept");
+
                     let to_be_popped = parse_table.grammar.rules[#start_rule_idx].rhs.len();
                     let mut children: Vec<_> = stack
                         .drain((stack.len() - to_be_popped)..)
