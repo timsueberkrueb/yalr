@@ -14,6 +14,10 @@ stages:
 jobs:
   include:
     - stage: lint
-      script: cargo clippy
+      script:
+        - rustup component add clippy
+        - cargo clippy
     - stage: codestyle
-      script: cargo fmt -- --check
+      script:
+        - rustup component add rustfmt-preview
+        - cargo fmt -- --check
