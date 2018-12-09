@@ -34,34 +34,38 @@ print("use yalrjson::Parser;")
 for file in os.listdir("test_parsing"):
     if not file[0] in ['y', 'n', 'i']:
         continue
+
     data = ""
+
     try:
         with open("test_parsing/" + file, 'r') as myfile:
             data=myfile.read().replace('\n', '')
-    except:
+    except UnicodeDecodeError:
+        # Ignore unicode decode errors as those are out of scope for our project
         continue
+
     file = file[:-1] \
-        .replace("-","dash") \
-        .replace("+","plus") \
-        .replace(".","dot") \
-        .replace("#","hashtag")
+        .replace("-", "dash") \
+        .replace("+", "plus") \
+        .replace(".", "dot") \
+        .replace("#", "hashtag")
 
     if file.startswith("y"):
         print("""#[test]
 fn {}() {{
     assert!(Parser::parse_str(r#"{}"#).is_ok());
 }}
-        """.format(file[:-5],data))
+        """.format(file[:-5], data))
     elif file.startswith("n"):
         print("""#[test]
 fn {}() {{
     assert!(Parser::parse_str(r#"{}"#).is_err());
 }}
-        """.format(file,data))
+        """.format(file, data))
     elif file.startswith("i"):
         print("""#[test]
 fn {}() {{
     Parser::parse_str(r#"{}"#);
 }}
-        """.format(file,data))
+        """.format(file, data))
 
