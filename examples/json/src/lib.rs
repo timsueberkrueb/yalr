@@ -48,7 +48,7 @@ impl fmt::Display for Nonterminal {
 #[derive(Logos, Ord, PartialOrd, Debug, Clone, Eq, PartialEq, Hash)]
 enum Terminal {
     // {m,n} notation is currently not supported
-    #[regex = r#""([^"\\\t]|\\"|\\\\|\\/|\\b|\\f|\\n|\\r|\\t|\\u[a-fA-F0-9][a-fA-F0-9][a-fA-F0-9][a-fA-F0-9])*""#]
+    #[regex = r#""([^"\\\t\n]|\\"|\\\\|\\/|\\b|\\f|\\n|\\r|\\t|\\u[a-fA-F0-9][a-fA-F0-9][a-fA-F0-9][a-fA-F0-9])*""#]
     String,
     #[regex = r#"-?(0|[1-9][0-9]*)(\.[0-9]+)?((e|E)(\+|-)?[0-9]+)?"#]
     Number,

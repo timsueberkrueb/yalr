@@ -798,7 +798,8 @@ fn n_structure_angle_bracket_null() {
         
 #[test]
 fn n_string_unescaped_newline() {
-    assert!(Parser::parse_str(r#"["newline"]"#).is_err());
+    assert!(Parser::parse_str(r#"["new
+    line"]"#).is_err());
 }
         
 #[test]
