@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
 edition = "2018"
 
+[dev-dependencies]
+# Only needed for doctests
+lazy_static = "1.1.0"
+
 [dependencies]
 syn = "0.15"
 yalr_core = { path = "../yalr_core" }

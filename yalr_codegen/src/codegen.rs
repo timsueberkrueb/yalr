@@ -25,7 +25,6 @@ pub fn generate_parser_impl(
     let parser_loop = generate_parser_loop(parse_table, rule_fns);
 
     let token_stream = quote! {
-        extern crate yalr;
         extern crate lazy_static;
 
         impl<'source> yalr::LALRParser<'source, #terminal_type, #nonterminal_type, &'source #input_type, #output_type> for Parser
