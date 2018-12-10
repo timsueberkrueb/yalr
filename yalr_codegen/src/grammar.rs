@@ -5,6 +5,7 @@ use yalr_core as yalr;
 use crate::enum_variant::EnumVariant;
 use crate::parse::RuleFn;
 
+#[allow(clippy::implicit_hasher)]
 pub fn generate_grammar(
     rule_fns: &[RuleFn],
     start: EnumVariant,
@@ -26,7 +27,8 @@ pub fn generate_grammar(
                 };
             }
             rule
-        }).collect();
+        })
+        .collect();
 
     yalr::Grammar {
         start,

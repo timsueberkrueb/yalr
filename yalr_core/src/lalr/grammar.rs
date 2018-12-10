@@ -15,5 +15,6 @@ where
     pub nonterminals: HashSet<N>,
     pub terminals: HashSet<T>,
     pub rules: Vec<Rule<T, N>>,
+    #[allow(clippy::implicit_hasher)]
     pub assoc_map: HashMap<T, Assoc>,
 }

@@ -26,36 +26,44 @@ fn cli() -> Result<(), Box<dyn Error>> {
                     Arg::with_name("file")
                         .help("Rust source file containing YALR impl block")
                         .required(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("impl")
                         .long("--impl")
                         .takes_value(true)
                         .help("Rust type with a YALR impl block to inspect"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("csv")
                         .long("--csv")
                         .takes_value(true)
                         .help("Write the parse table to a specified CSV file"),
-                ).about("Prints the LALR parse table of a YALR parser"),
-        ).subcommand(
+                )
+                .about("Prints the LALR parse table of a YALR parser"),
+        )
+        .subcommand(
             SubCommand::with_name("graph")
                 .arg(
                     Arg::with_name("file")
                         .help("Rust source file containing YALR impl block")
                         .required(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("impl")
                         .long("--impl")
                         .takes_value(true)
                         .help("Rust type with a YALR impl block to inspect"),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("output")
                         .long("--output")
                         .short("-o")
                         .takes_value(true)
                         .help("Write the generated graphviz graph to a file (*.dot)"),
-                ).about("Outputs a graphviz graph showing the LALR states of a YALR parser"),
-        ).setting(AppSettings::ArgRequiredElseHelp)
+                )
+                .about("Outputs a graphviz graph showing the LALR states of a YALR parser"),
+        )
+        .setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
     if let Some(table_opts) = matches.subcommand_matches("table") {

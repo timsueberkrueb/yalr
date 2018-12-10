@@ -329,7 +329,8 @@ where
                             rule_idx,
                             pos: 0,
                             lookahead,
-                        }.into();
+                        }
+                        .into();
                         if let Some(other_item) = closure.take(&new_item) {
                             // Unwrap Newtype
                             let mut new_item: Item<T, N> = new_item.into();

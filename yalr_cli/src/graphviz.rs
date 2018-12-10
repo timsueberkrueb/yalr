@@ -53,7 +53,8 @@ fn render_graphviz_graph(parse_table: &yalr_core::ParseTable<EnumVariant, EnumVa
                     item.augmented_rule_string(),
                     la_string
                 )
-            }).collect();
+            })
+            .collect();
         let table_row_string = table_rows.join("\n");
         let table_head = format!(
             "      <TR><TD><B>State #{}</B></TD><TD></TD></TR>",
