@@ -14,5 +14,5 @@ macro_rules! yalr_trace {
 #[macro_export]
 macro_rules! yalr_trace {
     () => {};
-    ($($arg:tt)*) => {{}}
+    ($($arg:tt)*) => {{}};
 }
