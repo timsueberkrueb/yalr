@@ -61,6 +61,7 @@ impl Parser {
     // TODO: Add support for priorities
 
     // Utility function
+    #[allow(dead_code)]
     fn parse_str(s: &str) -> Result<f32, Box<dyn std::error::Error>> {
         let lexer = Terminal::lexer(s);
         Parser::parse_logos(lexer)
@@ -113,6 +114,7 @@ impl Parser {
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::Parser;
 

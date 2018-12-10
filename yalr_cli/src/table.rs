@@ -64,21 +64,17 @@ fn generate_pretty_table(
         let mut row = row![i, items.join("\n"), lookaheads.join("\n")];
 
         for t in parse_table.grammar.terminals.iter() {
-            row.add_cell(cell![
-                state
-                    .action_map
-                    .get(t)
-                    .map_or("".to_owned(), |a| format!("{:?}", a))
-            ]);
+            row.add_cell(cell![state
+                .action_map
+                .get(t)
+                .map_or("".to_owned(), |a| format!("{:?}", a))]);
         }
 
         for n in parse_table.grammar.nonterminals.iter() {
-            row.add_cell(cell![
-                state
-                    .goto_map
-                    .get(n)
-                    .map_or("".to_owned(), |idx| format!("Goto({})", idx))
-            ]);
+            row.add_cell(cell![state
+                .goto_map
+                .get(n)
+                .map_or("".to_owned(), |idx| format!("Goto({})", idx))]);
         }
 
         table.add_row(row);

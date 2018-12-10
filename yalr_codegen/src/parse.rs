@@ -197,7 +197,8 @@ impl RuleFn {
                     }
                     _ => panic!("Unexpected function argument"),
                 }
-            }).collect();
+            })
+            .collect();
 
         let return_type: syn::Type = match &fn_decl.output {
             syn::ReturnType::Default => syn::parse2(quote! {()}).unwrap(),
@@ -386,7 +387,8 @@ where
     satisfy(|token: TokenTreeWrap| match token.0 {
         TokenTree::Punct(punct) => punct.as_char() == ',',
         _ => false,
-    }).map(|_| ())
+    })
+    .map(|_| ())
 }
 
 fn capitalize_first_letter(s: &str) -> String {

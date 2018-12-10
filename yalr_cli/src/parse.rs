@@ -58,7 +58,8 @@ fn find_yalr_impl<'a, 's>(
             .map(|item_impl| {
                 let self_ty = &(*item_impl.self_ty);
                 quote!(#self_ty).to_string()
-            }).collect();
+            })
+            .collect();
         Err(TableError::MultipleImpls(item_impl_types))
     } else {
         Ok(&visitor.item_impls[0])
