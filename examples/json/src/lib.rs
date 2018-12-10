@@ -11,8 +11,7 @@ type JSONNumber = f64;
 type JSONObject = HashMap<JSONString, JSONValue>;
 type JSONArray = Vec<JSONValue>;
 
-type KVPair = (String, JSONValue);
-type KVPairList = Vec<KVPair>;
+type KVPairMap = HashMap<JSONString, JSONValue>;
 type ArrayInner = Vec<JSONValue>;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -33,8 +32,7 @@ enum Nonterminal {
     String,
     Value,
     Object,
-    KVPair,
-    KVPairList,
+    KVPairMap,
     Array,
     ArrayInner,
 }
@@ -105,14 +103,9 @@ impl Parser {
 
     #[rule(String -> string)]
     fn string(input: &str) -> JSONString {
-        let mut res = String::new();
-        let mut chars_iter = input.chars().skip(1).peekable();
-        while let Some(c) = chars_iter.next() {
-            if chars_iter.peek().is_some() {
-                res.push(c)
-            }
-        }
-        res
+        // This is guaranteed to cut at valid utf-8 borders
+        // becasue first and last character are always quotes
+        input[1..(input.len() - 1)].to_owned()
     }
 
     #[rule(Number -> number)]
@@ -120,7 +113,6 @@ impl Parser {
         input.parse().unwrap()
     }
     
-
     #[rule(Value -> Number)]
     fn value_number(num: JSONNumber) -> JSONValue {
         JSONValue::Number(num)
@@ -169,31 +161,23 @@ impl Parser {
         res
     }
 
-    #[rule(Object -> leftbrace KVPairList String colon Value rightbrace)]
-    fn object_many(_lbrace: &str, kpl: KVPairList, key: JSONString, _color: &str, value: JSONValue, _rbrace: &str) -> JSONObject {
-        let mut res = HashMap::new();
-        for (key, value) in kpl {
-            res.insert(key, value);
-        }
-        res.insert(key, value);
-        res
+    #[rule(Object -> leftbrace KVPairMap String colon Value rightbrace)]
+    fn object_many(_lbrace: &str, mut kpm: KVPairMap, key: JSONString, _color: &str, value: JSONValue, _rbrace: &str) -> JSONObject {
+        kpm.insert(key, value);
+        kpm
     }
 
-    #[rule(KVPair -> String colon Value comma)]
-    fn object_kv_pair(key: JSONString, _color: &str, value: JSONValue, _comma: &str ) -> KVPair {
-        (key, value)
+    #[rule(KVPairMap -> KVPairMap String colon Value comma)]
+    fn kvpairmap_extend(mut kpm: KVPairMap, key: JSONString, _colon: &str, value: JSONValue, _comma: &str) -> KVPairMap {
+        kpm.insert(key, value);
+        kpm
     }
     
-    #[rule(KVPairList -> KVPairList KVPair)]
-    fn kvpairlist_extend(kpl: KVPairList, kp: KVPair) -> KVPairList {
-        let mut res =  kpl.clone();
-        res.push(kp);
-        res
-    }
-    
-    #[rule(KVPairList -> KVPair)]
-    fn kvpairlist_begin(kp: KVPair) -> KVPairList {
-        vec![kp]
+    #[rule(KVPairMap -> String colon Value comma)]
+    fn kvpairlist_begin(key: JSONString, _colon: &str, value: JSONValue, _comma: &str) -> KVPairMap {
+        let mut kpm = HashMap::new();
+        kpm.insert(key, value);
+        kpm
     }
     
     #[rule(Array -> leftbracket rightbracket)]
@@ -209,17 +193,15 @@ impl Parser {
     }
     
     #[rule(Array -> leftbracket ArrayInner Value rightbracket)]
-    fn array_many(_lbracket: &str, inner: ArrayInner, val: JSONValue, _rbracket: &str) -> JSONArray {
-        let mut res = inner.clone();
-        res.push(val);
-        res
+    fn array_many(_lbracket: &str, mut inner: ArrayInner, val: JSONValue, _rbracket: &str) -> JSONArray {
+        inner.push(val);
+        inner
     }
 
     #[rule(ArrayInner -> ArrayInner Value comma)]
-    fn array_inner_extend(inner: ArrayInner, val: JSONValue, _comma: &str) -> ArrayInner {
-        let mut res = inner.clone();
-        res.push(val);
-        res
+    fn array_inner_extend(mut inner: ArrayInner, val: JSONValue, _comma: &str) -> ArrayInner {
+        inner.push(val);
+        inner
     }
 
     #[rule(ArrayInner -> Value comma)]
