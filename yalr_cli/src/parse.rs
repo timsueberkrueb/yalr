@@ -5,16 +5,15 @@ use std::io::Read;
 
 use quote::quote;
 use syn::visit::Visit;
-use yalr_codegen::EnumVariant;
+use yalr_codegen::{Nonterminal, Terminal};
 
 pub fn generate_parse_table(
     filename: &str,
     impl_type: Option<&str>,
-) -> Result<yalr_core::ParseTable<EnumVariant, EnumVariant>, Box<dyn Error>> {
+) -> Result<yalr_core::ParseTable<Terminal, Nonterminal>, Box<dyn Error>> {
     let file: syn::File = parse_source_file(filename)?;
     let item_impl: &syn::ItemImpl = find_yalr_impl(&file, impl_type)?;
-    let attr_stream: proc_macro2::TokenStream = find_attr_decl(&item_impl);
-    let parse_table = yalr_codegen::generate_parse_table(attr_stream, item_impl)?;
+    let parse_table = yalr_codegen::generate_parse_table(item_impl)?;
     Ok(parse_table)
 }
 
@@ -26,20 +25,6 @@ fn parse_source_file(filename: &str) -> Result<syn::File, Box<dyn Error>> {
 
     let file = syn::parse_file(&content)?;
     Ok(file)
-}
-
-fn find_attr_decl(item_impl: &syn::ItemImpl) -> proc_macro2::TokenStream {
-    for attr in item_impl.attrs.iter().by_ref() {
-        if attr.path.is_ident("lalr") {
-            if let proc_macro2::TokenTree::Group(ref group) =
-                attr.tts.clone().into_iter().next().unwrap()
-            {
-                return group.stream();
-            }
-        }
-    }
-    // FIXME: Proper error handling
-    unreachable!();
 }
 
 fn find_yalr_impl<'a, 's>(

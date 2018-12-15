@@ -3,7 +3,7 @@ use std::fs;
 use std::io::Write;
 use tempfile::NamedTempFile;
 
-use yalr_codegen::EnumVariant;
+use yalr_codegen::{Nonterminal, Terminal};
 
 use crate::parse;
 
@@ -30,7 +30,7 @@ pub fn show_graphviz_graph(filename: &str, impl_type: Option<&str>) -> Result<()
     Ok(())
 }
 
-fn render_graphviz_graph(parse_table: &yalr_core::ParseTable<EnumVariant, EnumVariant>) -> String {
+fn render_graphviz_graph(parse_table: &yalr_core::ParseTable<Terminal, Nonterminal>) -> String {
     let mut lines = Vec::new();
     lines.push("digraph lalr_states {".to_owned());
     for (state_idx, state) in parse_table.states.iter().by_ref().enumerate() {

@@ -6,4 +6,4 @@ mod traits;
 
 pub use crate::error::ParseError;
 pub use crate::lalr::*;
-pub use crate::traits::{LALRLexer, LALRParser};
+pub use crate::traits::{Lexer, Parser, YALR};

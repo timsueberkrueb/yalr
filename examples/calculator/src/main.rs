@@ -1,21 +1,10 @@
+#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
+
 use std::fmt;
 
 use logos::Logos;
 use yalr::extra::LogosSupport;
 use yalr::*;
-
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
-enum Nonterminal {
-    Start,
-    Expression,
-    Term,
-}
-
-impl fmt::Display for Nonterminal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{:?}", self)
-    }
-}
 
 #[derive(Logos, Ord, PartialOrd, Debug, Clone, Eq, PartialEq, Hash)]
 enum Terminal {
@@ -49,11 +38,15 @@ impl fmt::Display for Terminal {
 
 struct Parser;
 
-#[lalr(Terminal, Nonterminal)]
-#[start_symbol(Start)]
-#[end_terminal(End)]
-#[input(str)]
-#[output(f32)]
+impl<'input> YALR<'input> for Parser {
+    type T = Terminal;
+    type Input = &'input str;
+    type Output = f32;
+}
+
+#[lalr]
+#[terminal_type(Terminal)]
+#[start_symbol(Expression)]
 #[assoc(Left, minus, plus)]
 #[assoc(Left, slash, asterisk)]
 #[assoc(Right, caret)]
@@ -65,11 +58,6 @@ impl Parser {
     fn parse_str(s: &str) -> Result<f32, Box<dyn std::error::Error>> {
         let lexer = Terminal::lexer(s);
         Parser::parse_logos(lexer)
-    }
-
-    #[rule(Start -> Expression end)]
-    fn start(expr: f32, _end: ()) -> f32 {
-        expr
     }
 
     #[rule(Expression -> Expression plus Expression)]

@@ -6,47 +6,54 @@ use quote::quote;
 
 use yalr_core as yalr;
 
-use crate::enum_variant::EnumVariant;
 use crate::parse::RuleFn;
+use crate::symbols::{Nonterminal, Terminal};
 
 pub fn generate_parser_impl(
-    parse_table: &yalr::ParseTable<EnumVariant, EnumVariant>,
+    parse_table: &yalr::ParseTable<Terminal, Nonterminal>,
     rule_fns: &[RuleFn],
-    input_type: &syn::Type,
-    output_type: &syn::Type,
-    terminal_type: &syn::Ident,
-    nonterminal_type: &syn::Ident,
+    terminal_type: &syn::Type,
+    user_start_symbol: &Nonterminal,
 ) -> proc_macro::TokenStream {
     let return_types = generate_rule_return_types(rule_fns);
+    let nonterminals: Vec<&Nonterminal> = return_types.keys().cloned().collect();
+    let nonterminal_enum = generate_nonterminal_enum(&nonterminals[..]);
     let user_data_enum = generate_user_data_enum(&return_types);
     let create_parse_table = generate_create_parse_table(parse_table);
     let output_enum = generate_output_enum();
     let stack_elem_struct = generate_stack_elem_struct();
-    let parser_loop = generate_parser_loop(parse_table, rule_fns);
+    let parser_loop = generate_parser_loop(rule_fns, user_start_symbol);
+
+    let input_type = quote! {  <Self as yalr::YALR<'source>>::Input };
+    let output_type = quote! {  <Self as yalr::YALR<'source>>::Output };
 
     let token_stream = quote! {
         extern crate yalr;
         extern crate lazy_static;
 
-        impl<'source> yalr::LALRParser<'source, #terminal_type, #nonterminal_type, &'source #input_type, #output_type> for Parser
+        impl<'source> yalr::Parser<'source, #terminal_type, #input_type, #output_type> for Parser
         {
             fn parse<L>(lexer: &mut L) -> Result<#output_type, Box<dyn std::error::Error>>
                 where
-                    L: yalr::LALRLexer<'source, #terminal_type, &'source #input_type>,
+                    L: yalr::Lexer<'source, #terminal_type, #input_type>,
             {
+                #nonterminal_enum
+
+                // FIXME: Support types not defined in current module
+                use self::#terminal_type as __TERMINAL_TYPE;
+
                 use lazy_static::lazy_static;
 
                 use yalr as yalr_core;
 
                 yalr_trace!("trace is enabled");
 
-                lazy_static! {
-                    static ref parse_table: yalr_core::ParseTable<#terminal_type, #nonterminal_type> = {
-                        #create_parse_table
+                // FIXME: Prevent creating a new parse table each time, e.g. using lazy static
+                let parse_table = {
+                    #create_parse_table
 
-                        p
-                    };
-                }
+                    p
+                };
 
                 #user_data_enum
                 #output_enum
@@ -60,8 +67,8 @@ pub fn generate_parser_impl(
     token_stream.into()
 }
 
-fn generate_rule_return_types(rule_fns: &[RuleFn]) -> HashMap<&EnumVariant, &syn::Type> {
-    let mut return_types: HashMap<&EnumVariant, &syn::Type> = HashMap::new();
+fn generate_rule_return_types(rule_fns: &[RuleFn]) -> HashMap<&Nonterminal, &syn::Type> {
+    let mut return_types: HashMap<&Nonterminal, &syn::Type> = HashMap::new();
 
     for rule_fn in rule_fns {
         if let Some(other_type) = return_types.get(&rule_fn.rule.lhs) {
@@ -81,12 +88,40 @@ fn generate_rule_return_types(rule_fns: &[RuleFn]) -> HashMap<&EnumVariant, &syn
     return_types
 }
 
+fn generate_nonterminal_enum(nonterminals: &[&Nonterminal]) -> proc_macro2::TokenStream {
+    let (variant_streams, variant_strings): (Vec<_>, Vec<_>) = nonterminals
+        .iter()
+        .map(|n| (n.ident_token_stream(), format!("{}", n)))
+        .unzip();
+    let variant_streams = &variant_streams;
+    quote! {
+        #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
+        enum Nonterminal {
+            Start,
+            #(#variant_streams),*
+        }
+
+        impl std::fmt::Display for Nonterminal {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+                match self {
+                    Start => write!(f, "Start"),
+                    #(
+                        #variant_streams => {
+                            write!(f, "{}", #variant_strings)
+                        }
+                    ),*
+                }
+            }
+        }
+    }
+}
+
 fn generate_user_data_enum(
-    return_types: &HashMap<&EnumVariant, &syn::Type>,
+    return_types: &HashMap<&Nonterminal, &syn::Type>,
 ) -> proc_macro2::TokenStream {
     let mut enum_variants = proc_macro2::TokenStream::new();
     for (nonterminal, return_type) in return_types.iter().by_ref() {
-        let variant_token_stream = nonterminal.variant_token_stream();
+        let variant_token_stream = nonterminal.ident_token_stream();
         enum_variants.extend(quote! {
             #variant_token_stream(#return_type),
         })
@@ -123,22 +158,14 @@ fn generate_stack_elem_struct() -> proc_macro2::TokenStream {
 }
 
 fn generate_parser_loop(
-    parse_table: &yalr::ParseTable<EnumVariant, EnumVariant>,
     rule_fns: &[RuleFn],
+    user_start_symbol: &Nonterminal,
 ) -> proc_macro2::TokenStream {
-    let reduce_match = generate_reduce_match(parse_table, rule_fns);
-    let input_type = quote! { _ };
-    let (start_rule_idx, start_rule_fn) = rule_fns
-        .iter()
-        .enumerate()
-        .find(|(_, r)| r.rule.lhs == parse_table.grammar.start)
-        .unwrap();
-    let start_rule_ident = &start_rule_fn.ident;
-    let start_rule_rhs_tuple =
-        generate_reduce_match_rhs_tuple(&start_rule_fn, &parse_table.grammar.end);
+    let reduce_match = generate_reduce_match(rule_fns);
+    let user_start_ident = user_start_symbol.ident_token_stream();
 
     quote! {
-        let mut stack: Vec<StackElem<#input_type>> = Vec::new();
+        let mut stack: Vec<StackElem<_>> = Vec::new();
 
         stack.push(
             StackElem {
@@ -184,16 +211,19 @@ fn generate_parser_loop(
                     stack.push(new_stack_element);
                 },
                 Some(yalr_core::Action::Accept) => {
-                    yalr_trace!("accept");
+                    // The start rule S' is being generated automatically and defined as
+                    // `S' -> S end` where `S` is the user defined start rule and `end` is the
+                    // terminal denoting EOI. Therefore, the expected stack at this point is
+                    // `[Output::None, result]`. If the stack contains anything else, it must be
+                    // considered a critical bug in YALR.
 
-                    let to_be_popped = parse_table.grammar.rules[#start_rule_idx].rhs.len();
-                    let mut children: Vec<_> = stack
-                        .drain((stack.len() - to_be_popped)..)
-                        .map(|stack_elem| stack_elem.output)
-                        .collect();
-
-                    let result = Self::#start_rule_ident(#start_rule_rhs_tuple);
-                    return Ok(result);
+                    if let(Some(stack_elem)) = stack.pop() {
+                        if let Output::UserData(UserData::#user_start_ident(result)) = stack_elem.output {
+                            return Ok(result);
+                        }
+                    }
+                    eprintln!("Fatal error: Encountered unexpected stack in accept action");
+                    panic!("Fatal error: This is a bug in YALR. Please report this.");
                 },
                 None => {
                     return Err(Box::new(yalr::ParseError::Unexpected(lexer.terminal().clone())))
@@ -203,16 +233,14 @@ fn generate_parser_loop(
     }
 }
 
-fn generate_reduce_match(
-    parse_table: &yalr::ParseTable<EnumVariant, EnumVariant>,
-    rule_fns: &[RuleFn],
-) -> proc_macro2::TokenStream {
+fn generate_reduce_match(rule_fns: &[RuleFn]) -> proc_macro2::TokenStream {
     let mut reduce_match = proc_macro2::TokenStream::new();
     for (rule_idx, rule_fn) in rule_fns.iter().enumerate() {
         let ident = &rule_fn.ident;
         let lhs = &rule_fn.rule.lhs;
-        let lhs_variant = &lhs.variant_token_stream();
-        let rhs_tuple = generate_reduce_match_rhs_tuple(&rule_fn, &parse_table.grammar.end);
+
+        let lhs_variant = &lhs.ident_token_stream();
+        let rhs_tuple = generate_reduce_match_rhs_tuple(&rule_fn);
 
         reduce_match.extend(quote! {
             #rule_idx => {
@@ -229,16 +257,13 @@ fn generate_reduce_match(
     }
 }
 
-fn generate_reduce_match_rhs_tuple(
-    rule_fn: &RuleFn,
-    end_terminal: &EnumVariant,
-) -> proc_macro2::TokenStream {
+fn generate_reduce_match_rhs_tuple(rule_fn: &RuleFn) -> proc_macro2::TokenStream {
     let mut rhs_tuple = proc_macro2::TokenStream::new();
 
     for symbol in rule_fn.rule.rhs.iter().by_ref() {
         let result = match symbol {
             yalr::Symbol::Nonterminal(n) => {
-                let n_variant = n.variant_token_stream();
+                let n_variant = n.ident_token_stream();
                 quote! {
                     match children.pop() {
                         Some(Output::UserData(UserData::#n_variant(u))) => u,
@@ -250,17 +275,13 @@ fn generate_reduce_match_rhs_tuple(
                 }
             }
             yalr::Symbol::Terminal(t) => {
-                if t == end_terminal {
-                    quote! { (), }
-                } else {
-                    quote! {
-                        if let Some(Output::Input(i)) = &children.pop() {
-                            i
-                        } else {
-                            eprintln!("Fatal error: Expected Output::Input for terminal {}.", #t);
-                            panic!("Fatal error: This is a bug in YALR. Please report this.");
-                        },
-                    }
+                quote! {
+                    if let Some(Output::Input(i)) = &children.pop() {
+                        i
+                    } else {
+                        eprintln!("Fatal error: Expected Output::Input for terminal {}.", #t);
+                        panic!("Fatal error: This is a bug in YALR. Please report this.");
+                    },
                 }
             }
         };
@@ -271,7 +292,7 @@ fn generate_reduce_match_rhs_tuple(
 }
 
 fn generate_create_parse_table(
-    table: &yalr::ParseTable<EnumVariant, EnumVariant>,
+    table: &yalr::ParseTable<Terminal, Nonterminal>,
 ) -> proc_macro2::TokenStream {
     // quote exports:
     let start = &table.grammar.start;
@@ -280,7 +301,7 @@ fn generate_create_parse_table(
     let terminals = &table.grammar.terminals;
     let rules = &table.grammar.rules;
     let states = &table.states;
-    let (assoc_map_keys, assoc_map_values): (Vec<&EnumVariant>, Vec<&yalr::Assoc>) =
+    let (assoc_map_keys, assoc_map_values): (Vec<&Terminal>, Vec<&yalr::Assoc>) =
         table.grammar.assoc_map.iter().unzip();
 
     quote! {

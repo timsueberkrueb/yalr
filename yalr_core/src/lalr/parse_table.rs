@@ -23,7 +23,7 @@ where
 {
     /// Generate an LALR parse table according to LALR grammar rules
     pub fn generate(grammar: Grammar<T, N>) -> Result<Self, GenerationError<T>> {
-        ParseTableGenerator::new(grammar).generate()
+        ParseTableGenerator::from_grammar(grammar)?.generate()
     }
 }
 
@@ -34,6 +34,7 @@ where
 {
     grammar: Grammar<T, N>,
     first_sets: BTreeMap<N, BTreeSet<T>>,
+    start_rule_idx: usize,
 }
 
 impl<T, N> ParseTableGenerator<T, N>
@@ -41,11 +42,22 @@ where
     T: fmt::Debug + fmt::Display + Ord + Clone + Eq + Hash,
     N: fmt::Debug + fmt::Display + Ord + Clone + Eq + Hash,
 {
-    fn new(grammar: Grammar<T, N>) -> Self {
+    fn from_grammar(grammar: Grammar<T, N>) -> Result<Self, GenerationError<T>> {
         let first_sets = BTreeMap::new();
-        Self {
-            grammar,
-            first_sets,
+        // FIXME: This allows for only one start rule. This is fine, but we need to enforce it.
+        if let Some((start_rule_idx, _)) = grammar
+            .rules
+            .iter()
+            .enumerate()
+            .find(|(_rule_idx, rule)| rule.lhs == grammar.start)
+        {
+            Ok(Self {
+                grammar,
+                first_sets,
+                start_rule_idx,
+            })
+        } else {
+            Err(GenerationError::MissingStartRule)
         }
     }
 
@@ -184,9 +196,10 @@ where
                     .next()
                     .unwrap()
                     .is_pos_at_end()
-                    && next_state.item_closure.iter().next().unwrap().rule == self.grammar.rules[0]
+                    && next_state.item_closure.iter().next().unwrap().rule
+                        == self.grammar.rules[self.start_rule_idx]
                 {
-                    // Reaching the end of rule (0) in the next state means reaching the end of input.
+                    // Reaching the end of the start rule in the next state means reaching the end of input.
                     // S' ->  S  •  eof
                     states[current_state]
                         .action_map
@@ -435,6 +448,7 @@ pub enum GenerationError<T>
 where
     T: fmt::Display + fmt::Debug,
 {
+    MissingStartRule,
     ReduceReduceConflict {
         lookahead: T,
         first_rule: usize,
@@ -448,6 +462,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
+            GenerationError::MissingStartRule => write!(f, "Missing start rule"),
             GenerationError::ReduceReduceConflict {
                 lookahead,
                 first_rule,
