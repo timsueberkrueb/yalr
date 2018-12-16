@@ -4,7 +4,7 @@ use std::fmt;
 use std::hash::Hash;
 
 use crate::lalr::item::ItemNewtype;
-use crate::{Action, Assoc, Grammar, Item, State, Symbol};
+use crate::{Action, Assoc, Grammar, Item, Rule, State, Symbol};
 
 #[derive(Debug)]
 pub struct ParseTable<T, N>
@@ -34,7 +34,7 @@ where
 {
     grammar: Grammar<T, N>,
     first_sets: BTreeMap<N, BTreeSet<T>>,
-    start_rule_idx: usize,
+    start_rules: HashSet<Rule<T, N>>,
 }
 
 impl<T, N> ParseTableGenerator<T, N>
@@ -44,17 +44,17 @@ where
 {
     fn from_grammar(grammar: Grammar<T, N>) -> Result<Self, GenerationError<T>> {
         let first_sets = BTreeMap::new();
-        // FIXME: This allows for only one start rule. This is fine, but we need to enforce it.
-        if let Some((start_rule_idx, _)) = grammar
+        let start_rules: HashSet<_> = grammar
             .rules
             .iter()
-            .enumerate()
-            .find(|(_rule_idx, rule)| rule.lhs == grammar.start)
-        {
+            .filter(|rule| rule.lhs == grammar.start)
+            .cloned()
+            .collect();
+        if !start_rules.is_empty() {
             Ok(Self {
                 grammar,
                 first_sets,
-                start_rule_idx,
+                start_rules,
             })
         } else {
             Err(GenerationError::MissingStartRule)
@@ -190,15 +190,12 @@ where
             if !next_state.item_closure.is_empty() {
                 next_state.item_closure = self.closure(next_state.item_closure);
 
-                if next_state
+                let start_rule_at_end = next_state
                     .item_closure
                     .iter()
-                    .next()
-                    .unwrap()
-                    .is_pos_at_end()
-                    && next_state.item_closure.iter().next().unwrap().rule
-                        == self.grammar.rules[self.start_rule_idx]
-                {
+                    .find(|item| self.start_rules.contains(&item.rule) && item.is_pos_at_end());
+
+                if let Some(_rule) = start_rule_at_end {
                     // Reaching the end of the start rule in the next state means reaching the end of input.
                     // S' ->  S  •  eof
                     states[current_state]
