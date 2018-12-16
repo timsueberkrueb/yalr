@@ -1,25 +1,10 @@
 use std::error::Error;
-use std::ops::Range;
 
 /// A generic lexer trait
 ///
 /// This trait should be implemented for lexers that can be plugged into a parser implementing
 /// the `Parser` trait.
-pub trait Lexer<'source, T, InputSlice>
-where
-    InputSlice: 'source,
-{
-    #[allow(clippy::declare_interior_mutable_const)]
-    const ERROR: T;
-    #[allow(clippy::declare_interior_mutable_const)]
-    const END: T;
-
-    // TODO: Implement an option to advance while considering the lookahead
-    fn advance(&mut self);
-    fn terminal<'t, 'lexer: 't>(&'lexer self) -> &'t T;
-    fn range(&self) -> Range<usize>;
-    fn slice(&self) -> InputSlice;
-}
+pub use plug_::Lexer as Lexer;
 
 /// A generic parser trait
 ///

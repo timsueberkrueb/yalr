@@ -5,6 +5,7 @@ authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
 edition = "2018"
 
 [dependencies]
-yalr = { path = "../../yalr", features = ["logos", "trace"] }
+yalr = { path = "../../yalr", features = ["trace"] }
+plug_ = { path = "../../../plug_", features = ["logos_support"] }
 logos = "0.9"
 lazy_static = "1.1.0"

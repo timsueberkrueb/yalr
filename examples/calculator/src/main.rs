@@ -3,8 +3,9 @@
 use std::fmt;
 
 use logos::Logos;
-use yalr::extra::LogosSupport;
+use plug_::support::logos::LogosShim;
 use yalr::*;
+use yalr::Parser as YALRParser;
 
 #[derive(Logos, Ord, PartialOrd, Debug, Clone, Eq, PartialEq, Hash)]
 enum Terminal {
@@ -57,7 +58,8 @@ impl Parser {
     #[allow(dead_code)]
     fn parse_str(s: &str) -> Result<f32, Box<dyn std::error::Error>> {
         let lexer = Terminal::lexer(s);
-        Parser::parse_logos(lexer)
+        let mut shim = LogosShim::wrap(lexer);
+        Parser::parse(&mut shim)
     }
 
     #[rule(Expression -> Expression plus Expression)]
@@ -118,6 +120,7 @@ mod test {
 fn main() {
     let input = "(20.5+64/4*2-1.5+70)/11";
     let lexer = Terminal::lexer(input);
-    let result = Parser::parse_logos(lexer);
+    let mut shim = LogosShim::wrap(lexer);
+    let result = Parser::parse(&mut shim);
     println!("{:?}", result);
 }
