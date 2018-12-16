@@ -485,3 +485,92 @@ where
 
 /// Type alias for LALR item sets
 type ItemSet<T, N> = HashSet<Item<T, N>>;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use matches::assert_matches;
+
+    // Helper macros enabling more declarative tests
+    macro_rules! symbols {
+        ($n:ident: $($i:ident),+) => {
+            #[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
+            enum $n {
+                $($i),+
+            }
+            impl $n {
+                fn set() -> HashSet<$n> {
+                    let mut set = HashSet::new();
+                    $(
+                        set.insert($n::$i);
+                    );+
+                    set
+                }
+            }
+            impl fmt::Display for $n {
+                fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                    match self {
+                        $(
+                            $n::$i => {
+                                write!(f, "{}", stringify!($i))
+                            }
+                        ),+
+                    }
+                }
+            }
+        }
+    }
+    macro_rules! terminals {
+        ($($i:ident),+) => {
+            symbols! { T: $($i),+ }
+            impl Into<Symbol<T, N>> for T {
+                fn into(self) -> Symbol<T, N> {
+                    Symbol::Terminal(self)
+                }
+            }
+        }
+    }
+    macro_rules! nonterminals {
+        ($($i:ident),+) => {
+            symbols! { N: $($i),+ }
+            impl Into<Symbol<T, N>> for N {
+                fn into(self) -> Symbol<T, N> {
+                    Symbol::Nonterminal(self)
+                }
+            }
+        }
+    }
+    macro_rules! rule {
+        ($lhs:expr => $($rhs:expr)+) => {
+            Rule { lhs: $lhs, rhs: vec![$($rhs.into()),+] }
+        }
+    }
+
+    #[test]
+    fn test_multiple_start_rules_accept() {
+        nonterminals! { S }
+        terminals! { A, B, End }
+
+        let rules = vec![
+            rule![N::S => T::A T::End],
+            rule![N::S => T::B T::End],
+        ];
+
+        let grammar = Grammar {
+            start: N::S,
+            end: T::End,
+            nonterminals: N::set(),
+            terminals: T::set(),
+            rules,
+            assoc_map: HashMap::new(),
+        };
+
+        let parse_table = ParseTable::generate(grammar)
+            .unwrap();
+
+        assert_matches!(parse_table.states[0].action_map[&T::A], Action::Shift(_));
+        assert_matches!(parse_table.states[0].action_map[&T::B], Action::Shift(_));
+        assert_matches!(parse_table.states[1].action_map[&T::End], Action::Accept);
+        assert_matches!(parse_table.states[2].action_map[&T::End], Action::Accept);
+    }
+}
