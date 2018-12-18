@@ -36,10 +36,31 @@ where
 /// Trait that needs to be implemented by YALR parsers
 ///
 /// You need to implement this trait in order for YALR to generate a parser implementation
+///
+/// ```
+/// # use yalr_core::YALR;
+///
+/// enum Terminal { /* ... */ }
+/// struct Parser;
+///
+/// impl<'input> YALR<'input> for Parser {
+///     type Terminal = Terminal;
+///     type Input = &'input str;
+///     type Output = f32;
+/// }
+///
+/// ```
 pub trait YALR<'source> {
     // This will start working once RFC 2338 (type alias enum variants) gets implemented.
     // TODO: This will replace the terminal_type attribute
-    type T;
+    /// Terminal/token enum type. Please note that this is currently not being used by YALR, since
+    /// it relies on RFC 2338 (type alias enum variants). However, it is encouraged to provide the
+    /// correct terminal type here because YALR will use `Terminal` once this feature becomes
+    /// available. The alternative for now is the `terminal_type` attribute, which will eventually
+    /// become deprecated.
+    type Terminal;
+    /// Input type that will be accepted by the generated `parse` function
     type Input;
+    /// Output type that will be returned by the generated `parse` function
     type Output;
 }

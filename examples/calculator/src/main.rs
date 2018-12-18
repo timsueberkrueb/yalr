@@ -1,4 +1,4 @@
-#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
+#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)] // FIXME
 
 use std::fmt;
 
@@ -39,7 +39,7 @@ impl fmt::Display for Terminal {
 struct Parser;
 
 impl<'input> YALR<'input> for Parser {
-    type T = Terminal;
+    type Terminal = Terminal;
     type Input = &'input str;
     type Output = f32;
 }
@@ -52,7 +52,6 @@ impl<'input> YALR<'input> for Parser {
 #[assoc(Right, caret)]
 impl Parser {
     // TODO: Add support for priorities
-
     // Utility function
     #[allow(dead_code)]
     fn parse_str(s: &str) -> Result<f32, Box<dyn std::error::Error>> {
