@@ -551,10 +551,7 @@ mod test {
         nonterminals! { S }
         terminals! { A, B, End }
 
-        let rules = vec![
-            rule![N::S => T::A T::End],
-            rule![N::S => T::B T::End],
-        ];
+        let rules = vec![rule![N::S => T::A T::End], rule![N::S => T::B T::End]];
 
         let grammar = Grammar {
             start: N::S,
@@ -565,8 +562,7 @@ mod test {
             assoc_map: HashMap::new(),
         };
 
-        let parse_table = ParseTable::generate(grammar)
-            .unwrap();
+        let parse_table = ParseTable::generate(grammar).unwrap();
 
         assert_matches!(parse_table.states[0].action_map[&T::A], Action::Shift(_));
         assert_matches!(parse_table.states[0].action_map[&T::B], Action::Shift(_));
