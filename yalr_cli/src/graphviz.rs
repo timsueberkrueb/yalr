@@ -57,7 +57,7 @@ fn render_graphviz_graph(parse_table: &yalr_core::ParseTable<Terminal, Nontermin
             .collect();
         let table_row_string = table_rows.join("\n");
         let table_head = format!(
-            "      <TR><TD><B>State #{}</B></TD><TD></TD></TR>",
+            "      <TR><TD><B>State #{}</B></TD><TD><B>Lookahead</B></TD></TR>",
             state_idx
         );
         let line = format!(
