@@ -9,9 +9,6 @@ use syn;
 
 use yalr_core as yalr;
 
-// FIXME: Those modules are currently unstable and not fit for public consumption
-// Replace the panics with proper error handling. While panicking is fine for the procedural macro,
-// the cli and possibly other applications could benefit from proper error handling
 pub mod codegen;
 pub mod error;
 pub mod grammar;
