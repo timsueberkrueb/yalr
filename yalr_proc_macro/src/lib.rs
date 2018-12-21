@@ -18,12 +18,12 @@ pub fn lalr(
     let parser_impl: syn::ItemImpl =
         syn::parse(cloned_input).expect("Failed to parse parser impl block");
 
-    let rule_fns = parse::parse_impl_items(&parser_impl);
+    let rule_fns = parse::parse_impl_items(&parser_impl).unwrap();
 
     let start_nonterminal = Nonterminal::Start;
     let end_terminal = Terminal::End;
 
-    let impl_attrs = parse::parse_impl_attrs(&parser_impl);
+    let impl_attrs = parse::parse_impl_attrs(&parser_impl).unwrap();
 
     let grammar = grammar::generate_grammar(
         &rule_fns,

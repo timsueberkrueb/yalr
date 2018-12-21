@@ -12,9 +12,10 @@ use combine::{ParseError, Parser, Stream};
 
 use yalr_core as yalr;
 
+use crate::error::CodegenError;
 use crate::symbols::{Nonterminal, Terminal};
 
-pub fn parse_impl_items(parser_impl: &syn::ItemImpl) -> Vec<RuleFn> {
+pub fn parse_impl_items(parser_impl: &syn::ItemImpl) -> Result<Vec<RuleFn>, CodegenError> {
     let mut rule_fns = Vec::new();
 
     for item in &parser_impl.items {
@@ -23,24 +24,28 @@ pub fn parse_impl_items(parser_impl: &syn::ItemImpl) -> Vec<RuleFn> {
             for attr in method.attrs.iter().by_ref() {
                 if attr.path.is_ident("rule") {
                     if found_rule {
-                        panic!("Duplicate rule attribute is not allowed");
+                        return Err(CodegenError::from_static(
+                            "Duplicate rule attribute is not allowed",
+                        ));
                     }
                     found_rule = true;
                     if let Some(proc_macro2::TokenTree::Group(group)) =
                         attr.tts.clone().into_iter().next()
                     {
                         let rule_fn =
-                            RuleFn::parse(group.stream(), &method.sig.ident, &method.sig.decl);
+                            RuleFn::parse(group.stream(), &method.sig.ident, &method.sig.decl)?;
                         rule_fns.push(rule_fn);
                     } else {
-                        panic!("Expected LALR rule declaration inside parenthesis");
+                        return Err(CodegenError::from_static(
+                            "Expected LALR rule declaration inside parenthesis",
+                        ));
                     }
                 }
             }
         }
     }
 
-    rule_fns
+    Ok(rule_fns)
 }
 
 pub struct ImplAttrs {
@@ -49,7 +54,7 @@ pub struct ImplAttrs {
     pub user_start_symbol: Nonterminal,
 }
 
-pub fn parse_impl_attrs(parser_impl: &syn::ItemImpl) -> ImplAttrs {
+pub fn parse_impl_attrs(parser_impl: &syn::ItemImpl) -> Result<ImplAttrs, CodegenError> {
     let mut assoc_map: HashMap<Terminal, yalr::Assoc> = HashMap::new();
     let mut terminal_type: Option<syn::Type> = None;
     let mut start_symbol: Option<Nonterminal> = None;
@@ -71,16 +76,21 @@ pub fn parse_impl_attrs(parser_impl: &syn::ItemImpl) -> ImplAttrs {
                     assoc_decl().parse(&input_stream[..]).expect(ASSOC_ERROR);
                 for t in terminals {
                     if assoc_map.contains_key(&t) {
-                        panic!(format!("Duplicate assoc declaration for {}", t));
+                        return Err(CodegenError::from_owned(format!(
+                            "Duplicate assoc declaration for {}",
+                            t
+                        )));
                     }
                     assoc_map.insert(t, assoc.clone());
                 }
             } else {
-                panic!(ASSOC_ERROR);
+                return Err(CodegenError::from_static(ASSOC_ERROR));
             }
         } else if attr.path.is_ident("terminal_type") {
             if terminal_type.is_some() {
-                panic!("Duplicate terminal_type declaration is not allowed");
+                return Err(CodegenError::from_static(
+                    "Duplicate terminal_type declaration is not allowed",
+                ));
             }
             if let Some(proc_macro2::TokenTree::Group(group)) = attr.tts.clone().into_iter().next()
             {
@@ -91,11 +101,13 @@ pub fn parse_impl_attrs(parser_impl: &syn::ItemImpl) -> ImplAttrs {
                 let (t_type, _) = type_().parse(&input_stream[..]).expect(TERMINAL_TYPE_ERROR);
                 terminal_type = Some(t_type);
             } else {
-                panic!(TERMINAL_TYPE_ERROR);
+                return Err(CodegenError::from_static(TERMINAL_TYPE_ERROR));
             }
         } else if attr.path.is_ident("start_symbol") {
             if start_symbol.is_some() {
-                panic!("Duplicate start_symbol declaration is not allowed");
+                return Err(CodegenError::from_static(
+                    "Duplicate start_symbol declaration is not allowed",
+                ));
             }
             if let Some(proc_macro2::TokenTree::Group(group)) = attr.tts.clone().into_iter().next()
             {
@@ -108,7 +120,7 @@ pub fn parse_impl_attrs(parser_impl: &syn::ItemImpl) -> ImplAttrs {
                     .expect(START_SYMBOL_ERROR);
                 start_symbol = Some(s_symbol);
             } else {
-                panic!(START_SYMBOL_ERROR);
+                return Err(CodegenError::from_static(START_SYMBOL_ERROR));
             }
         }
     }
@@ -116,11 +128,11 @@ pub fn parse_impl_attrs(parser_impl: &syn::ItemImpl) -> ImplAttrs {
     let terminal_type = terminal_type.expect(TERMINAL_TYPE_ERROR);
     let user_start_symbol = start_symbol.expect(START_SYMBOL_ERROR);
 
-    ImplAttrs {
+    Ok(ImplAttrs {
         assoc_map,
         terminal_type,
         user_start_symbol,
-    }
+    })
 }
 
 pub struct RuleFn {
@@ -131,7 +143,11 @@ pub struct RuleFn {
 }
 
 impl RuleFn {
-    fn parse(attr: proc_macro2::TokenStream, fn_ident: &syn::Ident, fn_decl: &syn::FnDecl) -> Self {
+    fn parse(
+        attr: proc_macro2::TokenStream,
+        fn_ident: &syn::Ident,
+        fn_decl: &syn::FnDecl,
+    ) -> Result<Self, CodegenError> {
         let input_stream: Vec<TokenTreeWrap> = attr.into_iter().map(TokenTreeWrap::from).collect();
 
         let (rule, _) = lalr_rule()
@@ -143,15 +159,17 @@ impl RuleFn {
             .iter()
             .map(|arg| {
                 match arg {
-                    syn::FnArg::Captured(captured) => captured.ty.clone(),
+                    syn::FnArg::Captured(captured) => Ok(captured.ty.clone()),
                     // TODO: Support functions taking self
                     syn::FnArg::SelfRef(_) | syn::FnArg::SelfValue(_) => {
-                        panic!("Functions taking self are not supported, currently")
+                        Err(CodegenError::from_static(
+                            "Functions taking self are not supported, currently",
+                        ))
                     }
-                    _ => panic!("Unexpected function argument"),
+                    _ => Err(CodegenError::from_static("Unexpected function argument")),
                 }
             })
-            .collect();
+            .collect::<Result<_, _>>()?;
 
         let return_type: syn::Type = match &fn_decl.output {
             syn::ReturnType::Default => syn::parse2(quote! {()}).unwrap(),
@@ -159,12 +177,12 @@ impl RuleFn {
         };
 
         // TODO: Consider performing basic sanity checks on signature (e.g. arg count)
-        Self {
+        Ok(Self {
             ident: fn_ident.clone(),
             input_types,
             return_type,
             rule,
-        }
+        })
     }
 }
 

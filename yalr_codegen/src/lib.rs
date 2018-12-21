@@ -13,6 +13,7 @@ use yalr_core as yalr;
 // Replace the panics with proper error handling. While panicking is fine for the procedural macro,
 // the cli and possibly other applications could benefit from proper error handling
 pub mod codegen;
+pub mod error;
 pub mod grammar;
 pub mod parse;
 pub mod symbols;
@@ -22,8 +23,8 @@ pub use crate::symbols::{Nonterminal, Terminal};
 pub fn generate_parse_table(
     item_impl: &syn::ItemImpl,
 ) -> Result<yalr::ParseTable<Terminal, Nonterminal>, Box<dyn Error>> {
-    let rule_fns = parse::parse_impl_items(&item_impl);
-    let impl_attrs: parse::ImplAttrs = parse::parse_impl_attrs(&item_impl);
+    let rule_fns = parse::parse_impl_items(&item_impl)?;
+    let impl_attrs: parse::ImplAttrs = parse::parse_impl_attrs(&item_impl)?;
 
     let start_nonterminal = Nonterminal::Start;
     let end_terminal = Terminal::End;
