@@ -12,7 +12,7 @@ where
     fn parse_logos(lexer: logos::Lexer<T, Input>) -> Result<O, Box<dyn Error>>;
 }
 
-impl<'source, T, Input, Output, P> LogosSupport<'source, T, Input, Output> for P
+impl<'source, T: 'source, Input, Output, P> LogosSupport<'source, T, Input, Output> for P
 where
     Input: logos::Source<'source> + 'source,
     P: Parser<'source, T, <Input as logos::Source<'source>>::Slice, Output>,

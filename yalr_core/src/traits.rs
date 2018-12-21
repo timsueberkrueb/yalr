@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::fmt;
 use std::ops::Range;
 
 /// A generic lexer trait
@@ -28,7 +29,7 @@ pub trait Parser<'source, T, InputSlice, Output>
 where
     InputSlice: 'source,
 {
-    fn parse<L>(lexer: &mut L) -> Result<Output, Box<Error>>
+    fn parse<L: 'source>(lexer: &mut L) -> Result<Output, Box<Error>>
     where
         L: Lexer<'source, T, InputSlice>;
 }
@@ -40,6 +41,7 @@ where
 /// ```
 /// # use yalr_core::YALR;
 ///
+/// #[derive(PartialEq, Eq, Clone, Debug)]
 /// enum Terminal { /* ... */ }
 /// struct Parser;
 ///
@@ -58,7 +60,7 @@ pub trait YALR<'source> {
     /// correct terminal type here because YALR will use `Terminal` once this feature becomes
     /// available. The alternative for now is the `terminal_type` attribute, which will eventually
     /// become deprecated.
-    type Terminal;
+    type Terminal: PartialEq + Eq + Clone + fmt::Debug;
     /// Input type that will be accepted by the generated `parse` function
     type Input;
     /// Output type that will be returned by the generated `parse` function

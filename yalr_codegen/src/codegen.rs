@@ -19,9 +19,11 @@ pub fn generate_parser_impl(
     let nonterminals: Vec<&Nonterminal> = return_types.keys().cloned().collect();
     let nonterminal_enum = generate_nonterminal_enum(&nonterminals[..]);
     let user_data_enum = generate_user_data_enum(&return_types);
-    let create_parse_table = generate_create_parse_table(parse_table);
+    let state_table_type = generate_state_table_type(&parse_table);
     let output_enum = generate_output_enum();
+    let parse_action_enum = generate_parse_action_enum();
     let stack_elem_struct = generate_stack_elem_struct();
+    let state_table = generate_state_table(&parse_table);
     let parser_loop = generate_parser_loop(rule_fns, user_start_symbol);
 
     let input_type = quote! {  <Self as yalr::YALR<'source>>::Input };
@@ -33,7 +35,7 @@ pub fn generate_parser_impl(
 
         impl<'source> yalr::Parser<'source, #terminal_type, #input_type, #output_type> for Parser
         {
-            fn parse<L>(lexer: &mut L) -> Result<#output_type, Box<dyn std::error::Error>>
+            fn parse<L: 'source>(lexer: &mut L) -> Result<#output_type, Box<dyn std::error::Error>>
                 where
                     L: yalr::Lexer<'source, #terminal_type, #input_type>,
             {
@@ -48,12 +50,12 @@ pub fn generate_parser_impl(
 
                 yalr_trace!("trace is enabled");
 
-                // FIXME: Prevent creating a new parse table each time, e.g. using lazy static
-                let parse_table = {
-                    #create_parse_table
+                #parse_action_enum
 
-                    p
-                };
+                #state_table_type
+
+                // TODO: Make this a const or at least use lazy_static
+                let state_table = #state_table;
 
                 #user_data_enum
                 #output_enum
@@ -95,7 +97,7 @@ fn generate_nonterminal_enum(nonterminals: &[&Nonterminal]) -> proc_macro2::Toke
         .unzip();
     let variant_streams = &variant_streams;
     quote! {
-        #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
+        #[derive(PartialEq, Eq, Clone, Debug)]
         enum Nonterminal {
             Start,
             #(#variant_streams),*
@@ -157,6 +159,86 @@ fn generate_stack_elem_struct() -> proc_macro2::TokenStream {
     }
 }
 
+fn generate_parse_action_enum() -> proc_macro2::TokenStream {
+    quote! {
+        enum ParseAction {
+            Shift(usize),
+            // (rule_idx, to_be_popped, goto nonterminal)
+            Reduce(usize, usize, Nonterminal),
+            Accept,
+            Unexpected,
+        }
+    }
+}
+
+fn generate_state_table_type(
+    table: &yalr::ParseTable<Terminal, Nonterminal>,
+) -> proc_macro2::TokenStream {
+    let mut terminals_sorted: Vec<_> = table.grammar.terminals.iter().cloned().collect();
+    terminals_sorted.sort_unstable();
+    let mut nonterminals_sorted: Vec<_> = table.grammar.nonterminals.iter().cloned().collect();
+    nonterminals_sorted.sort_unstable();
+
+    let state_count = table.states.len();
+    let terminal_count = table.grammar.terminals.len();
+    let nonterminal_count = table.grammar.nonterminals.len();
+
+    let (terminals_idx, terminals): (Vec<_>, Vec<_>) = terminals_sorted.iter().enumerate().unzip();
+    let (nonterminals_idx, nonterminals): (Vec<_>, Vec<_>) =
+        nonterminals_sorted.iter().enumerate().unzip();
+
+    quote! {
+        struct StateTable<'source, L: 'source>
+        where
+            L: yalr::Lexer<'source, __TERMINAL_TYPE, <Parser as yalr::YALR<'source>>::Input>
+        {
+            inner: [
+                (
+                    // action table
+                    [ParseAction; #terminal_count],
+                    // goto table
+                    [Option<usize>; #nonterminal_count]
+                );
+                #state_count
+            ],
+            phantom: &'source std::marker::PhantomData<L>,
+        }
+
+        impl<'source, L: 'source> StateTable<'source, L>
+        where
+            L: yalr::Lexer<'source, __TERMINAL_TYPE, <Parser as yalr::YALR<'source>>::Input>
+        {
+            fn action(&self, state: usize, terminal: &__TERMINAL_TYPE) -> &ParseAction {
+                &self.inner[state].0[self.map_terminal(terminal)]
+            }
+
+            fn goto(&self, state: usize, nonterminal: &Nonterminal) -> &Option<usize> {
+                &self.inner[state].1[self.map_nonterminal(nonterminal)]
+            }
+
+            // TODO: It would be nice if we could directly reuse the enum value
+            fn map_terminal(&self, terminal: &__TERMINAL_TYPE) -> usize {
+                // FIXME: This is ugly.
+                // Cannot use match here because associated consts cannot be referenced in patterns
+                #(
+                    if *terminal == #terminals {
+                        return #terminals_idx;
+                    }
+                )*
+                unreachable!();
+            }
+
+            fn map_nonterminal(&self, nonterminal: &Nonterminal) -> usize {
+                match nonterminal {
+                    #(
+                        #nonterminals => #nonterminals_idx
+                    ),*
+                }
+            }
+        }
+    }
+}
+
 fn generate_parser_loop(
     rule_fns: &[RuleFn],
     user_start_symbol: &Nonterminal,
@@ -177,8 +259,8 @@ fn generate_parser_loop(
         loop {
             yalr_trace!("stack = {:#?}", stack);
 
-            match parse_table.states[stack.last().unwrap().state].action_map.get(lexer.terminal()) {
-                Some(yalr_core::Action::Shift(idx)) => {
+            match state_table.action(stack.last().unwrap().state, lexer.terminal()) {
+                ParseAction::Shift(idx) => {
                     yalr_trace!("shift {}", idx);
 
                     stack.push(StackElem {
@@ -188,19 +270,16 @@ fn generate_parser_loop(
 
                     lexer.advance();
                 },
-                Some(yalr_core::Action::Reduce(rule_idx)) => {
+                ParseAction::Reduce(rule_idx, to_be_popped, nonterminal) => {
                     yalr_trace!("reduce {}", rule_idx);
 
-                    let to_be_popped = parse_table.grammar.rules[*rule_idx].rhs.len();
                     let mut children: Vec<_> = stack
                         .drain((stack.len() - to_be_popped)..)
                         .map(|stack_elem| stack_elem.output)
                         .rev()
                         .collect();
 
-                    let state_on_top_of_stack = &parse_table.states[stack.last().unwrap().state];
-                    let state = state_on_top_of_stack.goto_map[&parse_table.grammar.rules[*rule_idx].lhs];
-
+                    let state = state_table.goto(stack.last().unwrap().state, nonterminal).unwrap();
                     let user_data = #reduce_match;
 
                     let new_stack_element = StackElem {
@@ -210,7 +289,7 @@ fn generate_parser_loop(
 
                     stack.push(new_stack_element);
                 },
-                Some(yalr_core::Action::Accept) => {
+                ParseAction::Accept => {
                     // The start rule S' is being generated automatically and defined as
                     // `S' -> S end` where `S` is the user defined start rule and `end` is the
                     // terminal denoting EOI. Therefore, the expected stack at this point is
@@ -225,7 +304,7 @@ fn generate_parser_loop(
                     eprintln!("Fatal error: Encountered unexpected stack in accept action");
                     panic!("Fatal error: This is a bug in YALR. Please report this.");
                 },
-                None => {
+                ParseAction::Unexpected => {
                     return Err(Box::new(yalr::ParseError::Unexpected(lexer.terminal().clone())))
                 }
             }
@@ -254,6 +333,69 @@ fn generate_reduce_match(rule_fns: &[RuleFn]) -> proc_macro2::TokenStream {
             #reduce_match
             _ => unreachable!()
         }
+    }
+}
+
+fn generate_state_table(
+    table: &yalr::ParseTable<Terminal, Nonterminal>,
+) -> proc_macro2::TokenStream {
+    let mut terminals_sorted: Vec<_> = table.grammar.terminals.iter().cloned().collect();
+    terminals_sorted.sort_unstable();
+    let mut nonterminals_sorted: Vec<_> = table.grammar.nonterminals.iter().cloned().collect();
+    nonterminals_sorted.sort_unstable();
+
+    let state_table = table.states.iter().map(|state| {
+        state_to_tokens(
+            &terminals_sorted,
+            &nonterminals_sorted,
+            &table.grammar.rules,
+            &state,
+        )
+    });
+    quote! {
+        StateTable::<L> {
+            inner: [#(#state_table),*],
+            phantom: &std::marker::PhantomData {},
+        }
+    }
+}
+
+fn state_to_tokens(
+    terminals_sorted: &[Terminal],
+    nonterminals_sorted: &[Nonterminal],
+    rules: &[yalr::Rule<Terminal, Nonterminal>],
+    state: &yalr::State<Terminal, Nonterminal>,
+) -> proc_macro2::TokenStream {
+    let actions_iter = terminals_sorted
+        .iter()
+        .map(|t| match state.action_map.get(t) {
+            Some(yalr::Action::Shift(idx)) => {
+                quote! { ParseAction::Shift(#idx) }
+            }
+            Some(yalr::Action::Reduce(rule_idx)) => {
+                let rule = &rules[*rule_idx];
+                let nonterminal = &rule.lhs;
+                let to_be_popped = rule.rhs.len();
+                quote! { ParseAction::Reduce(#rule_idx, #to_be_popped, #nonterminal) }
+            }
+            Some(yalr::Action::Accept) => {
+                quote! { ParseAction::Accept }
+            }
+            None => {
+                quote! { ParseAction::Unexpected }
+            }
+        });
+    let goto_iter = nonterminals_sorted
+        .iter()
+        .map(|n| match state.goto_map.get(n) {
+            Some(idx) => quote! { Some(#idx) },
+            None => quote! { None },
+        });
+    quote! {
+        (
+            [#(#actions_iter),*],
+            [#(#goto_iter),*],
+        )
     }
 }
 
@@ -289,50 +431,4 @@ fn generate_reduce_match_rhs_tuple(rule_fn: &RuleFn) -> proc_macro2::TokenStream
     }
 
     rhs_tuple
-}
-
-fn generate_create_parse_table(
-    table: &yalr::ParseTable<Terminal, Nonterminal>,
-) -> proc_macro2::TokenStream {
-    // quote exports:
-    let start = &table.grammar.start;
-    let end = &table.grammar.end;
-    let nonterminals = &table.grammar.nonterminals;
-    let terminals = &table.grammar.terminals;
-    let rules = &table.grammar.rules;
-    let states = &table.states;
-    let (assoc_map_keys, assoc_map_values): (Vec<&Terminal>, Vec<&yalr::Assoc>) =
-        table.grammar.assoc_map.iter().unzip();
-
-    quote! {
-        use std::collections::{HashSet, HashMap, BTreeSet};
-
-        let rules = vec![#(#rules),*];
-
-        let grammar = yalr_core::Grammar {
-            start: #start,
-            end: #end,
-            nonterminals: {
-                let mut hash_set = HashSet::new();
-                #(hash_set.insert(#nonterminals);)*
-                hash_set
-            },
-            terminals: {
-                let mut hash_set = HashSet::new();
-                #(hash_set.insert(#terminals);)*
-                hash_set
-            },
-            rules,
-            assoc_map: {
-                let mut hash_map = HashMap::new();
-                #(hash_map.insert(#assoc_map_keys, #assoc_map_values);)*
-                hash_map
-            },
-        };
-
-        let p = yalr_core::ParseTable {
-            grammar,
-            states: vec![ #(#states),* ],
-        };
-    }
 }

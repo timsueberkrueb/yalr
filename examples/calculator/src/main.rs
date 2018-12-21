@@ -1,10 +1,12 @@
+#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)] // FIXME
+
 use std::fmt;
 
 use logos::Logos;
 use yalr::extra::LogosSupport;
 use yalr::*;
 
-#[derive(Logos, Ord, PartialOrd, Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Logos, PartialEq, Eq, Clone, Debug)]
 enum Terminal {
     #[token = "+"]
     Plus,
