@@ -140,7 +140,70 @@ pub fn lalr(
 /// the enum variants are expected to start with an uppercase letter. This syntax may change.
 ///
 #[proc_macro_attribute]
+#[allow(clippy::needless_pass_by_value)]
 pub fn rule(
+    _attr: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    input
+}
+
+/// Set the LALR start symbol
+///
+/// This attribute must be used to declare the start symbol of the grammar. The start symbol is
+/// usually a nonterminal.
+///
+#[proc_macro_attribute]
+#[allow(clippy::needless_pass_by_value)]
+pub fn start_symbol(
+    _attr: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    input
+}
+
+/// Declare associativity rules for terminals
+///
+/// This is an optional attribute that can be used to declare the associativity of terminals.
+/// This is especially useful if you are writing a parser for mathematical operators. E.g.
+/// substraction and division are usually defined as left associative, while exponentiation is
+/// usually defined as right associative.
+///
+/// # Example
+///
+/// The operator `-` be left associative:
+/// ```ignore
+/// a - b - c
+/// is equivalent to
+/// (a - b) - c
+/// ```
+///
+/// The operator `^` be right associative:
+/// ```ignore
+/// a ^ b ^ c
+/// is equivalent to
+/// a ^ (b ^ c)
+/// ```
+///
+/// # Syntax
+///
+/// ```ignore
+/// #[assoc(Left, A, B, C)]
+/// #[assoc(Right, D, E, F)]
+/// ```
+/// where `A..F` are terminals.
+///
+/// Refer to the `calculator` example for a demonstration of associativity usage.
+///
+/// # Implementation
+///
+/// Associativity is handled similar to how YACC/Bison handles it. It is used to resolve
+/// shift-reduce conflicts. If the lookahead terminal is left associative, reduce wins.
+/// If the lookahead terminal is right associative, shift wins.
+///
+#[proc_macro_attribute]
+#[allow(clippy::needless_pass_by_value)]
+pub fn assoc(
     _attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
@@ -159,9 +222,9 @@ macro_rules! declare_attribute {
     };
 }
 
+
+
 // Those attributes are being used by the lalr proc macro. Due to
 // https://github.com/rust-lang/rust/issues/29642, we need some way to declare them and an easy way
 // to do so is by providing a proc macro which does nothing with the input
 declare_attribute!(terminal_type);
-declare_attribute!(start_symbol);
-declare_attribute!(assoc);
