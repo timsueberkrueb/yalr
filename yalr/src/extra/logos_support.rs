@@ -2,7 +2,7 @@ use std::error::Error;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use yalr_core::Parser;
+use crate::Parser;
 
 pub trait LogosSupport<'source, T, Input, O>
 where

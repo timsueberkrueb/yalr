@@ -39,7 +39,7 @@ where
 /// You need to implement this trait in order for YALR to generate a parser implementation
 ///
 /// ```
-/// # use yalr_core::YALR;
+/// # use yalr::YALR;
 ///
 /// #[derive(PartialEq, Eq, Clone, Debug)]
 /// enum Terminal { /* ... */ }

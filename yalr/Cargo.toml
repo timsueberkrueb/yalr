@@ -5,7 +5,7 @@ authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
 edition = "2018"
 
 [dependencies]
-yalr_core = { path = "../yalr_core" }
+yalr_core = { path = "../yalr_core", optional = true }
 yalr_proc_macro = { path = "../yalr_proc_macro", optional = true }
 logos = { version = "0.9", optional = true }
 
@@ -13,4 +13,5 @@ logos = { version = "0.9", optional = true }
 default = ["proc_macro"]
 proc_macro = ["yalr_proc_macro"]
 logos_support = ["logos"]
+core = ["yalr_core"]
 trace = []
