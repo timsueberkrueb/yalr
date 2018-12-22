@@ -7,6 +7,68 @@ use yalr_codegen::{Nonterminal, Terminal};
 
 use yalr_core as yalr;
 
+
+/// Generate a LALR parser implementation
+///
+/// This procedural macro attribute can be used to decorate `impl` blocks for structs or enums.
+/// The chosen type needs to implement the `YALR` trait.
+///
+/// The following attributes are required to follow a `lalr` attribute for configuration of the
+/// parser implementation that should be generated:
+/// * `terminal_type`
+/// * `start_symbol`
+///
+/// The `rule` attribute can be used to declare LALR production rules
+///
+/// # Example
+///
+/// ```rust
+/// # use std::fmt;
+/// #
+/// # extern crate lazy_static;
+/// # extern crate yalr;
+/// #
+/// # use yalr_proc_macro::*;
+/// #
+/// use yalr::*;
+///
+/// #[derive(PartialEq, Eq, Clone, Debug)]
+/// enum Terminal {
+///     A,
+///     B,
+///     End,
+/// }
+///
+/// impl fmt::Display for Terminal {
+///     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+///         write!(f, "{:?}", self)
+///     }
+///  }
+///
+/// struct Parser;
+///
+/// impl<'input> YALR<'input> for Parser {
+///    type Terminal = Terminal;
+///    type Input = &'input str;
+///    type Output = String;
+/// }
+/// #
+/// # fn main() {
+/// #
+///
+/// #[lalr]
+/// #[terminal_type(Terminal)]
+/// #[start_symbol(Start)]
+/// impl Parser {
+///     #[rule(Start -> a b)]
+///     fn start(a: &str, b: &str) -> String {
+///         a.to_owned() + b
+///     }
+/// }
+///
+/// # }
+/// ```
+///
 #[proc_macro_attribute]
 #[allow(clippy::needless_pass_by_value)]
 pub fn lalr(
