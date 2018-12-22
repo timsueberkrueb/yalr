@@ -110,6 +110,43 @@ pub fn lalr(
     input
 }
 
+/// Declare a LALR production rule
+///
+/// This attribute can be used do decorate a function inside of an `impl` block marked with the
+/// `lalr` attribute.
+///
+/// # Syntax
+///
+/// The `rule` attribute uses a syntax similar to what is conventionally used for grammar rules in
+/// literature. Nonterminals start with an uppercase letter, terminals with a lowercase letter:
+/// ```ignore
+/// A -> B c d
+/// ```
+/// Where `A` and `B` are nonterminals and `c` and `d` are terminals.
+///
+/// All terminals and nonterminals used in rules need to be declared variants of the enum types
+/// specified in the `lalr` block.
+///
+/// For example, the terminal for the example above might be defined like this:
+///
+/// ```
+/// enum Terminal {
+///     C,
+///     D,
+/// }
+/// ```
+///
+/// Currently, terminals are expected to start with a lowercase letter in the `rule` declaration but
+/// the enum variants are expected to start with an uppercase letter. This syntax may change.
+///
+#[proc_macro_attribute]
+pub fn rule(
+    _attr: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    input
+}
+
 macro_rules! declare_attribute {
     ($fn_name:ident) => {
         #[proc_macro_attribute]
@@ -127,5 +164,4 @@ macro_rules! declare_attribute {
 // to do so is by providing a proc macro which does nothing with the input
 declare_attribute!(terminal_type);
 declare_attribute!(start_symbol);
-declare_attribute!(rule);
 declare_attribute!(assoc);
