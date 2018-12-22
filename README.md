@@ -10,10 +10,7 @@ These are some general goals for the project with varying degrees of completion:
 
 * **Panic-free**: The generated parser implementation should not panic
 * **Fast**: The generated parser implementation should be reasonably fast
-* **Straightforward syntax**: no custom grammar files, only Rust code and macros. Use the conventional
-  LALR production rule syntax (e.g. `Expression -> Expression plus Expression`), where terminals start with a lowercase
-  letter and nonterminals
-  start with an uppercase letter
+* **Straightforward syntax**: no custom grammar files, only Rust code and macros
 * **Tooling**: CLI tooling should be provided for introspection (LALR parse table, LALR state diagram)
 * **Lexer-independent**: You should be able use a generated YALR parser with any lexer that implements the `YALRLexer`
   trait. Support for popular lexers should be provided out-of-the-box using cargo features (e.g. `logos_support`)

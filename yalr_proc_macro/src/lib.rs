@@ -59,7 +59,7 @@ use yalr_core as yalr;
 /// #[terminal_type(Terminal)]
 /// #[start_symbol(Start)]
 /// impl Parser {
-///     #[rule(Start -> a b)]
+///     #[rule(Start -> A B)]
 ///     fn start(a: &str, b: &str) -> String {
 ///         a.to_owned() + b
 ///     }
@@ -118,26 +118,31 @@ pub fn lalr(
 /// # Syntax
 ///
 /// The `rule` attribute uses a syntax similar to what is conventionally used for grammar rules in
-/// literature. Nonterminals start with an uppercase letter, terminals with a lowercase letter:
-/// ```ignore
-/// A -> B c d
-/// ```
-/// Where `A` and `B` are nonterminals and `c` and `d` are terminals.
+/// literature:
 ///
-/// All terminals and nonterminals used in rules need to be declared variants of the enum types
-/// specified in the `lalr` block.
+/// ```ignore
+/// A -> B C D
+/// ```
+/// Where `A` is a nonterminal and `B`, `C` and `D` could be terminals or nonterminals.
+///
+/// All terminals need to defined as variants of an enum type.
 ///
 /// For example, the terminal for the example above might be defined like this:
 ///
 /// ```
 /// enum Terminal {
+///     B,
 ///     C,
 ///     D,
 /// }
 /// ```
 ///
-/// Currently, terminals are expected to start with a lowercase letter in the `rule` declaration but
-/// the enum variants are expected to start with an uppercase letter. This syntax may change.
+/// This enum type must be declared using the associated `Terminal` constant of the `YALR` trait as
+/// well as using the `terminal_type` attribute (due to a current limitation, see the `YALR`
+/// trait or `terminal_type` docs for more information).
+///
+/// There must be at least one rule per nonterminal with the given nonterminal on the left hand
+/// side.
 ///
 #[proc_macro_attribute]
 #[allow(clippy::needless_pass_by_value)]

@@ -1,13 +1,13 @@
 extern crate proc_macro;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use quote::quote;
 use syn;
 
 use proc_macro2::TokenTree;
 
-use combine::{choice, eof, many, many1, satisfy, satisfy_map};
+use combine::{choice, eof, many1, satisfy, satisfy_map};
 use combine::{ParseError, Parser, Stream};
 
 use yalr_core as yalr;
@@ -16,7 +16,8 @@ use crate::error::CodegenError;
 use crate::symbols::{Nonterminal, Terminal};
 
 pub fn parse_impl_items(parser_impl: &syn::ItemImpl) -> Result<Vec<RuleFn>, CodegenError> {
-    let mut rule_fns = Vec::new();
+    let mut nonterminals: HashSet<Nonterminal> = HashSet::new();
+    let mut immediate_rules_methods: Vec<(ImmediateRule, &syn::ImplItemMethod)> = Vec::new();
 
     for item in &parser_impl.items {
         if let syn::ImplItem::Method(method) = item {
@@ -32,9 +33,17 @@ pub fn parse_impl_items(parser_impl: &syn::ItemImpl) -> Result<Vec<RuleFn>, Code
                     if let Some(proc_macro2::TokenTree::Group(group)) =
                         attr.tts.clone().into_iter().next()
                     {
-                        let rule_fn =
-                            RuleFn::parse(group.stream(), &method.sig.ident, &method.sig.decl)?;
-                        rule_fns.push(rule_fn);
+                        let input_stream: Vec<TokenTreeWrap> = group
+                            .stream()
+                            .into_iter()
+                            .map(TokenTreeWrap::from)
+                            .collect();
+                        let (rule, _) = lalr_rule()
+                            .parse(&input_stream[..])
+                            .expect("Failed to parse LALR rule");
+                        // Register lhs (guaranteed to be a nonterminal)
+                        nonterminals.insert(rule.lhs.clone());
+                        immediate_rules_methods.push((rule, &method));
                     } else {
                         return Err(CodegenError::from_static(
                             "Expected LALR rule declaration inside parenthesis",
@@ -43,6 +52,29 @@ pub fn parse_impl_items(parser_impl: &syn::ItemImpl) -> Result<Vec<RuleFn>, Code
                 }
             }
         }
+    }
+
+    let mut rule_fns = Vec::new();
+
+    for (immediate_rule, method) in immediate_rules_methods {
+        let proper_rhs: Vec<_> = immediate_rule
+            .rhs
+            .into_iter()
+            .map(|symbol_ident| {
+                let potential_nonterminal = Nonterminal::UserDefined(symbol_ident.clone());
+                if nonterminals.contains(&potential_nonterminal) {
+                    yalr::Symbol::Nonterminal(potential_nonterminal)
+                } else {
+                    yalr::Symbol::Terminal(Terminal::UserDefined(symbol_ident))
+                }
+            })
+            .collect();
+        let proper_rule = yalr::Rule {
+            lhs: immediate_rule.lhs,
+            rhs: proper_rhs,
+        };
+        let rule_fn = RuleFn::create(proper_rule, &method.sig.ident, &method.sig.decl)?;
+        rule_fns.push(rule_fn);
     }
 
     Ok(rule_fns)
@@ -143,17 +175,11 @@ pub struct RuleFn {
 }
 
 impl RuleFn {
-    fn parse(
-        attr: proc_macro2::TokenStream,
+    fn create(
+        rule: yalr::Rule<Terminal, Nonterminal>,
         fn_ident: &syn::Ident,
         fn_decl: &syn::FnDecl,
     ) -> Result<Self, CodegenError> {
-        let input_stream: Vec<TokenTreeWrap> = attr.into_iter().map(TokenTreeWrap::from).collect();
-
-        let (rule, _) = lalr_rule()
-            .parse(&input_stream[..])
-            .expect("Failed to parse LALR rule");
-
         let input_types: Vec<syn::Type> = fn_decl
             .inputs
             .iter()
@@ -184,6 +210,14 @@ impl RuleFn {
             rule,
         })
     }
+}
+
+/// Immediate rule representation.
+///
+/// At this point, it is not clear whether a given symbol is a terminal or a nonterminal.
+struct ImmediateRule {
+    lhs: Nonterminal,
+    rhs: Vec<syn::Ident>,
 }
 
 // Newtype hack to workaround Stream requiring PartialEq which is not implemented by
@@ -227,24 +261,21 @@ where
 {
     (
         assoc().skip(comma()),
-        many1(terminal().skip(choice((comma(), eof())))),
+        many1(
+            ident()
+                .map(Terminal::UserDefined)
+                .skip(choice((comma(), eof()))),
+        ),
     )
 }
 
-fn lalr_rule<I>() -> impl Parser<Input = I, Output = yalr::Rule<Terminal, Nonterminal>>
+fn lalr_rule<I>() -> impl Parser<Input = I, Output = ImmediateRule>
 where
     I: Stream<Item = TokenTreeWrap>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (
-        nonterminal().skip(rule_separator()),
-        many(choice((
-            terminal().map(yalr::Symbol::Terminal),
-            nonterminal().map(yalr::Symbol::Nonterminal),
-        ))),
-        eof(),
-    )
-        .map(|(lhs, rhs, _eof)| yalr::Rule { lhs, rhs })
+    (nonterminal().skip(rule_separator()), many1(ident()), eof())
+        .map(|(lhs, rhs, _eof)| ImmediateRule { lhs, rhs })
 }
 
 fn nonterminal<I>() -> impl Parser<Input = I, Output = Nonterminal>
@@ -254,11 +285,8 @@ where
 {
     satisfy_map(move |token: TokenTreeWrap| {
         if let TokenTree::Ident(lhs_ident) = token.0 {
-            let ident_string = lhs_ident.to_string();
-            if ident_string.chars().next().unwrap().is_uppercase() {
-                let nonterminal = Nonterminal::new(lhs_ident);
-                return Some(nonterminal);
-            }
+            let nonterminal = Nonterminal::new(lhs_ident);
+            return Some(nonterminal);
         }
         None
     })
@@ -280,26 +308,6 @@ where
         }),
     )
         .map(|_| ())
-}
-
-fn terminal<I>() -> impl Parser<Input = I, Output = Terminal>
-where
-    I: Stream<Item = TokenTreeWrap>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    satisfy_map(move |token: TokenTreeWrap| {
-        if let TokenTree::Ident(lhs_ident) = token.0 {
-            let ident_string = lhs_ident.to_string();
-            if ident_string.chars().next().unwrap().is_lowercase() {
-                // Modify ident to start with a capital letter
-                let ident_string = capitalize_first_letter(&ident_string);
-                let ident = syn::Ident::new(&ident_string, lhs_ident.span());
-                let terminal = Terminal::new(ident);
-                return Some(terminal);
-            }
-        }
-        None
-    })
 }
 
 fn assoc<I>() -> impl Parser<Input = I, Output = yalr::Assoc>
@@ -343,12 +351,4 @@ where
         _ => false,
     })
     .map(|_| ())
-}
-
-fn capitalize_first_letter(s: &str) -> String {
-    let mut c = s.chars();
-    match c.next() {
-        None => String::new(),
-        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
-    }
 }
