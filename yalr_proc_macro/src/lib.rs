@@ -210,21 +210,35 @@ pub fn assoc(
     input
 }
 
-macro_rules! declare_attribute {
-    ($fn_name:ident) => {
-        #[proc_macro_attribute]
-        pub fn $fn_name(
-            _attr: proc_macro::TokenStream,
-            input: proc_macro::TokenStream,
-        ) -> proc_macro::TokenStream {
-            input
-        }
-    };
+// TODO: This will be replaced by the YALR trait
+/// Declare the terminal enum type to use
+///
+/// This attribute must be used to declare which terminal enum type should be used by the generated
+/// parser implementation.
+///
+/// This will be replaced by the associated `Terminal` constant of the `YALR` trait as soon as it
+/// is possible to access enum variants over type aliases (RFC 2338).
+///
+/// Therefore make sure to provide the correct type using the `terminal_type` attribute as well as
+/// in your `YALR` trait `impl`.
+///
+/// # Syntax
+///
+/// ```
+/// use yalr::terminal_type;
+///
+/// enum Terminal {}
+///
+/// struct Parser;
+///
+/// #[terminal_type(Terminal)]
+/// impl Parser { /* ... */ }
+/// ```
+#[proc_macro_attribute]
+#[allow(clippy::needless_pass_by_value)]
+pub fn terminal_type(
+    _attr: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    input
 }
-
-
-
-// Those attributes are being used by the lalr proc macro. Due to
-// https://github.com/rust-lang/rust/issues/29642, we need some way to declare them and an easy way
-// to do so is by providing a proc macro which does nothing with the input
-declare_attribute!(terminal_type);
