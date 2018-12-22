@@ -1,9 +1,9 @@
+mod error;
 pub mod extra;
 mod traits;
-mod error;
 
 pub use crate::error::ParseError;
-pub use crate::traits::{YALR, Parser, Lexer};
+pub use crate::traits::{Lexer, Parser, YALR};
 
 #[cfg(feature = "proc_macro")]
 pub use yalr_proc_macro::{assoc, lalr, rule, start_symbol, terminal_type};

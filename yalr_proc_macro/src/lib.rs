@@ -7,7 +7,6 @@ use yalr_codegen::{Nonterminal, Terminal};
 
 use yalr_core as yalr;
 
-
 /// Generate a LALR parser implementation
 ///
 /// This procedural macro attribute can be used to decorate `impl` blocks for structs or enums.
