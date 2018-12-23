@@ -1,24 +1,24 @@
-use std::error::Error;
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use crate::Parser;
+use crate::{ParseError, Parser};
 
 pub trait LogosSupport<'source, T, Input, O>
 where
     Input: logos::Source<'source>,
-    T: logos::Logos,
+    T: logos::Logos + fmt::Display + fmt::Debug,
 {
-    fn parse_logos(lexer: logos::Lexer<T, Input>) -> Result<O, Box<dyn Error>>;
+    fn parse_logos(lexer: logos::Lexer<T, Input>) -> Result<O, ParseError<T>>;
 }
 
 impl<'source, T: 'source, Input, Output, P> LogosSupport<'source, T, Input, Output> for P
 where
     Input: logos::Source<'source> + 'source,
     P: Parser<'source, T, <Input as logos::Source<'source>>::Slice, Output>,
-    T: logos::Logos,
+    T: logos::Logos + fmt::Display + fmt::Debug,
 {
-    fn parse_logos(lexer: logos::Lexer<T, Input>) -> Result<Output, Box<dyn Error>> {
+    fn parse_logos(lexer: logos::Lexer<T, Input>) -> Result<Output, ParseError<T>> {
         let mut shim = LogosShim::wrap(lexer);
         P::parse(&mut shim)
     }

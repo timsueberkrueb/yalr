@@ -1,6 +1,7 @@
-use std::error::Error;
 use std::fmt;
 use std::ops::Range;
+
+use crate::ParseError;
 
 /// A generic lexer trait
 ///
@@ -29,9 +30,10 @@ pub trait Parser<'source, T, InputSlice, Output>
 where
     InputSlice: 'source,
 {
-    fn parse<L: 'source>(lexer: &mut L) -> Result<Output, Box<Error>>
+    fn parse<L: 'source>(lexer: &mut L) -> Result<Output, ParseError<T>>
     where
-        L: Lexer<'source, T, InputSlice>;
+        L: Lexer<'source, T, InputSlice>,
+        T: fmt::Display + fmt::Debug;
 }
 
 /// Trait that needs to be implemented by YALR parsers

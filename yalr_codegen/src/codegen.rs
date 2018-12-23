@@ -35,7 +35,7 @@ pub fn generate_parser_impl(
 
         impl<'source> yalr::Parser<'source, #terminal_type, #input_type, #output_type> for Parser
         {
-            fn parse<L: 'source>(lexer: &mut L) -> Result<#output_type, Box<dyn std::error::Error>>
+            fn parse<L: 'source>(lexer: &mut L) -> Result<#output_type, yalr::ParseError<#terminal_type>>
                 where
                     L: yalr::Lexer<'source, #terminal_type, #input_type>,
             {
@@ -311,7 +311,7 @@ fn generate_parser_loop(
                     panic!("Fatal error: This is a bug in YALR. Please report this.");
                 },
                 ParseAction::Unexpected => {
-                    return Err(Box::new(yalr::ParseError::Unexpected(lexer.terminal().clone())))
+                    return Err(yalr::ParseError::Unexpected(lexer.terminal().clone()))
                 }
             }
         }
