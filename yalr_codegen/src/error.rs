@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::fmt;
 
-#[derive(Debug)]
 pub enum CodegenError {
     Static(&'static str),
     Owned(String),
@@ -17,12 +16,18 @@ impl CodegenError {
     }
 }
 
-impl fmt::Display for CodegenError {
+impl fmt::Debug for CodegenError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
-            CodegenError::Static(msg) => write!(f, "Codegen error: {}", msg),
-            CodegenError::Owned(msg) => write!(f, "Codegen error: {}", msg),
+            CodegenError::Static(msg) => write!(f, "{}", msg),
+            CodegenError::Owned(msg) => write!(f, "{}", msg),
         }
+    }
+}
+
+impl fmt::Display for CodegenError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        <Self as fmt::Debug>::fmt(self, f)
     }
 }
 

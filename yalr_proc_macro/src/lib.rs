@@ -12,12 +12,15 @@ use yalr_core as yalr;
 /// This procedural macro attribute can be used to decorate `impl` blocks for structs or enums.
 /// The chosen type needs to implement the `YALR` trait.
 ///
-/// The following attributes are required to follow a `lalr` attribute for configuration of the
-/// parser implementation that should be generated:
-/// * `terminal_type`
-/// * `start_symbol`
+/// The `lalr` attribute takes one required argument: `start` declares the start symbol of the
+/// grammar (usually a nonterminal).
 ///
-/// The `rule` attribute can be used to declare LALR production rules
+///
+/// # Attributes
+///
+/// * `terminal_type` (required): Declare the terminal enum type to use
+/// * `rule`: Declare a LALR production rule
+/// * `assoc`: Declare associativity rules for terminals
 ///
 /// # Example
 ///
@@ -55,9 +58,8 @@ use yalr_core as yalr;
 /// # fn main() {
 /// #
 ///
-/// #[lalr]
+/// #[lalr(start="Start")]
 /// #[terminal_type(Terminal)]
-/// #[start_symbol(Start)]
 /// impl Parser {
 ///     #[rule(Start -> A B)]
 ///     fn start(a: &str, b: &str) -> String {
@@ -69,9 +71,8 @@ use yalr_core as yalr;
 /// ```
 ///
 #[proc_macro_attribute]
-#[allow(clippy::needless_pass_by_value)]
 pub fn lalr(
-    _attr: proc_macro::TokenStream,
+    attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let cloned_input = input.clone();
@@ -79,17 +80,20 @@ pub fn lalr(
     let parser_impl: syn::ItemImpl =
         syn::parse(cloned_input).expect("Failed to parse parser impl block");
 
-    let rule_fns = parse::parse_impl_items(&parser_impl).unwrap();
+    let rule_fns = parse::parse_impl_items(&parser_impl).expect("Failed to parse impl items");
 
     let start_nonterminal = Nonterminal::Start;
     let end_terminal = Terminal::End;
 
-    let impl_attrs = parse::parse_impl_attrs(&parser_impl).unwrap();
+    let user_start_symbol =
+        parse::parse_lalr_attr_start_symbol(attr.into()).expect("Failed to parse start symbol");
+
+    let impl_attrs = parse::parse_impl_attrs(&parser_impl).expect("Failed to parse attributes");
 
     let grammar = grammar::generate_grammar(
         &rule_fns,
         start_nonterminal,
-        impl_attrs.user_start_symbol.clone(),
+        user_start_symbol.clone(),
         end_terminal,
         impl_attrs.assoc_map,
     );
@@ -97,12 +101,8 @@ pub fn lalr(
         yalr::ParseTable::generate(grammar).expect("Error while generating parse table");
 
     let terminal_type: &syn::Type = &impl_attrs.terminal_type;
-    let generated_code = codegen::generate_parser_impl(
-        &parse_table,
-        &rule_fns,
-        terminal_type,
-        &impl_attrs.user_start_symbol,
-    );
+    let generated_code =
+        codegen::generate_parser_impl(&parse_table, &rule_fns, terminal_type, &user_start_symbol);
 
     let mut input = input;
     input.extend(generated_code);
@@ -147,20 +147,6 @@ pub fn lalr(
 #[proc_macro_attribute]
 #[allow(clippy::needless_pass_by_value)]
 pub fn rule(
-    _attr: proc_macro::TokenStream,
-    input: proc_macro::TokenStream,
-) -> proc_macro::TokenStream {
-    input
-}
-
-/// Set the LALR start symbol
-///
-/// This attribute must be used to declare the start symbol of the grammar. The start symbol is
-/// usually a nonterminal.
-///
-#[proc_macro_attribute]
-#[allow(clippy::needless_pass_by_value)]
-pub fn start_symbol(
     _attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {

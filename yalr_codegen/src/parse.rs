@@ -15,6 +15,23 @@ use yalr_core as yalr;
 use crate::error::CodegenError;
 use crate::symbols::{Nonterminal, Terminal};
 
+pub fn parse_lalr_attr_start_symbol(
+    token_stream: proc_macro2::TokenStream,
+) -> Result<Nonterminal, CodegenError> {
+    if let Ok(syn::Meta::NameValue(name_value)) = syn::parse2(token_stream) {
+        if name_value.ident == syn::Ident::new("start", proc_macro2::Span::call_site()) {
+            if let syn::Lit::Str(lit_str) = name_value.lit {
+                let ident = syn::Ident::new(&lit_str.value(), lit_str.span());
+                let nonterminal = Nonterminal::new(ident);
+                return Ok(nonterminal);
+            }
+        }
+    }
+    Err(CodegenError::from_static(
+        "Expected `#[lalr(start=\"S\")]` where `S` is a nonterminal",
+    ))
+}
+
 pub fn parse_impl_items(parser_impl: &syn::ItemImpl) -> Result<Vec<RuleFn>, CodegenError> {
     let mut nonterminals: HashSet<Nonterminal> = HashSet::new();
     let mut immediate_rules_methods: Vec<(ImmediateRule, &syn::ImplItemMethod)> = Vec::new();
@@ -83,18 +100,15 @@ pub fn parse_impl_items(parser_impl: &syn::ItemImpl) -> Result<Vec<RuleFn>, Code
 pub struct ImplAttrs {
     pub assoc_map: HashMap<Terminal, yalr::Assoc>,
     pub terminal_type: syn::Type,
-    pub user_start_symbol: Nonterminal,
 }
 
 pub fn parse_impl_attrs(parser_impl: &syn::ItemImpl) -> Result<ImplAttrs, CodegenError> {
     let mut assoc_map: HashMap<Terminal, yalr::Assoc> = HashMap::new();
     let mut terminal_type: Option<syn::Type> = None;
-    let mut start_symbol: Option<Nonterminal> = None;
 
     const ASSOC_ERROR: &str = "Expected `#[assoc(Assoc, T1, T2, ...)` declaration where Assoc is `Left` or `Right` and `T1`, `T2`, ... `TN` are terminals";
     const TERMINAL_TYPE_ERROR: &str =
         "Expected `#[terminal_type(T)]` where `T` is the terminal enum type";
-    const START_SYMBOL_ERROR: &str = "Expected `#[start_symbol(N)]` where `N` is a nonterminal";
 
     for attr in parser_impl.attrs.iter().by_ref() {
         if attr.path.is_ident("assoc") {
@@ -135,35 +149,14 @@ pub fn parse_impl_attrs(parser_impl: &syn::ItemImpl) -> Result<ImplAttrs, Codege
             } else {
                 return Err(CodegenError::from_static(TERMINAL_TYPE_ERROR));
             }
-        } else if attr.path.is_ident("start_symbol") {
-            if start_symbol.is_some() {
-                return Err(CodegenError::from_static(
-                    "Duplicate start_symbol declaration is not allowed",
-                ));
-            }
-            if let Some(proc_macro2::TokenTree::Group(group)) = attr.tts.clone().into_iter().next()
-            {
-                let input_stream: proc_macro2::TokenStream = group.stream();
-                let input_stream: Vec<TokenTreeWrap> =
-                    input_stream.into_iter().map(TokenTreeWrap::from).collect();
-
-                let (s_symbol, _) = nonterminal()
-                    .parse(&input_stream[..])
-                    .expect(START_SYMBOL_ERROR);
-                start_symbol = Some(s_symbol);
-            } else {
-                return Err(CodegenError::from_static(START_SYMBOL_ERROR));
-            }
         }
     }
 
     let terminal_type = terminal_type.expect(TERMINAL_TYPE_ERROR);
-    let user_start_symbol = start_symbol.expect(START_SYMBOL_ERROR);
 
     Ok(ImplAttrs {
         assoc_map,
         terminal_type,
-        user_start_symbol,
     })
 }
 

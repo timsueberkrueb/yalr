@@ -18,6 +18,7 @@ pub mod symbols;
 pub use crate::symbols::{Nonterminal, Terminal};
 
 pub fn generate_parse_table(
+    attr: proc_macro2::TokenStream,
     item_impl: &syn::ItemImpl,
 ) -> Result<yalr::ParseTable<Terminal, Nonterminal>, Box<dyn Error>> {
     let rule_fns = parse::parse_impl_items(&item_impl)?;
@@ -26,10 +27,12 @@ pub fn generate_parse_table(
     let start_nonterminal = Nonterminal::Start;
     let end_terminal = Terminal::End;
 
+    let user_start_symbol = parse::parse_lalr_attr_start_symbol(attr)?;
+
     let grammar = grammar::generate_grammar(
         &rule_fns,
         start_nonterminal,
-        impl_attrs.user_start_symbol,
+        user_start_symbol,
         end_terminal,
         impl_attrs.assoc_map,
     );

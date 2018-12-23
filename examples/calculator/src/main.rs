@@ -44,9 +44,8 @@ impl<'input> YALR<'input> for Parser {
     type Output = f32;
 }
 
-#[lalr]
+#[lalr(start = "Expression")]
 #[terminal_type(Terminal)]
-#[start_symbol(Expression)]
 #[assoc(Left, Minus, Plus)]
 #[assoc(Left, Slash, Asterisk)]
 #[assoc(Right, Caret)]
