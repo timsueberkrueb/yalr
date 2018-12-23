@@ -209,7 +209,10 @@ fn generate_state_table_type(
             L: yalr::Lexer<'source, __TERMINAL_TYPE, <Parser as yalr::YALR<'source>>::Input>
         {
             fn action(&self, state: usize, terminal: &__TERMINAL_TYPE) -> &ParseAction {
-                &self.inner[state].0[self.map_terminal(terminal)]
+                match self.map_terminal(terminal) {
+                    Ok(idx) => &self.inner[state].0[idx],
+                    Err(_) => &ParseAction::Unexpected,
+                }
             }
 
             fn goto(&self, state: usize, nonterminal: &Nonterminal) -> &Option<usize> {
@@ -217,15 +220,18 @@ fn generate_state_table_type(
             }
 
             // TODO: It would be nice if we could directly reuse the enum value
-            fn map_terminal(&self, terminal: &__TERMINAL_TYPE) -> usize {
+            fn map_terminal(&self, terminal: &__TERMINAL_TYPE) -> Result<usize, ()> {
                 // FIXME: This is ugly.
                 // Cannot use match here because associated consts cannot be referenced in patterns
                 #(
                     if *terminal == #terminals {
-                        return #terminals_idx;
+                        return Ok(#terminals_idx);
                     }
                 )*
-                unreachable!();
+                // It is possible that not all possible terminals are handled here because codegen
+                // only knows about the terminals that are part of the rules. Therefore, we need
+                // to behave as if we have encountered unexpected input
+                Err(())
             }
 
             fn map_nonterminal(&self, nonterminal: &Nonterminal) -> usize {
