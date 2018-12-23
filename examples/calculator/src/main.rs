@@ -1,4 +1,5 @@
-#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)] // FIXME
+// FIXME: Upstream bug (https://github.com/maciejhirsz/logos/issues/66)
+#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
 
 use std::fmt;
 
