@@ -1,0 +1,11 @@
+[package]
+name = "unknown_terminals"
+version = "0.1.0"
+authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
+edition = "2018"
+
+[dev-dependencies]
+yalr = { path = "../../yalr" }
+matches = "0.1.8"
+test_utils = { path = "../test_utils" }
+lazy_static = "1.1.0"
