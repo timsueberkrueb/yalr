@@ -1,23 +1,13 @@
+// FIXME: Upstream bug (https://github.com/maciejhirsz/logos/issues/66)
+#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
+
 use std::fmt;
 
 use logos::Logos;
 use yalr::extra::LogosSupport;
 use yalr::*;
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
-enum Nonterminal {
-    Start,
-    Expression,
-    Term,
-}
-
-impl fmt::Display for Nonterminal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{:?}", self)
-    }
-}
-
-#[derive(Logos, Ord, PartialOrd, Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Logos, PartialEq, Eq, Clone, Debug)]
 enum Terminal {
     #[token = "+"]
     Plus,
@@ -49,40 +39,37 @@ impl fmt::Display for Terminal {
 
 struct Parser;
 
-#[lalr(Terminal, Nonterminal)]
-#[start_symbol(Start)]
-#[end_terminal(End)]
-#[input(str)]
-#[output(f32)]
-#[assoc(Left, minus, plus)]
-#[assoc(Left, slash, asterisk)]
-#[assoc(Right, caret)]
+impl<'input> YALR<'input> for Parser {
+    type Terminal = Terminal;
+    type Input = &'input str;
+    type Output = f32;
+}
+
+#[lalr(start = "Expression")]
+#[terminal_type(Terminal)]
+#[assoc(Left, Minus, Plus)]
+#[assoc(Left, Slash, Asterisk)]
+#[assoc(Right, Caret)]
 impl Parser {
     // TODO: Add support for priorities
-
     // Utility function
     #[allow(dead_code)]
-    fn parse_str(s: &str) -> Result<f32, Box<dyn std::error::Error>> {
+    fn parse_str(s: &str) -> Result<f32, ParseError<Terminal>> {
         let lexer = Terminal::lexer(s);
         Parser::parse_logos(lexer)
     }
 
-    #[rule(Start -> Expression end)]
-    fn start(expr: f32, _end: ()) -> f32 {
-        expr
-    }
-
-    #[rule(Expression -> Expression plus Expression)]
+    #[rule(Expression -> Expression Plus Expression)]
     fn expr_add(left: f32, _plus: &str, right: f32) -> f32 {
         left + right
     }
 
-    #[rule(Expression -> Expression minus Expression)]
+    #[rule(Expression -> Expression Minus Expression)]
     fn expr_sub(left: f32, _minus: &str, right: f32) -> f32 {
         left - right
     }
 
-    #[rule(Term -> Term caret Term)]
+    #[rule(Term -> Term Caret Term)]
     fn expr_pow(left: f32, _caret: &str, right: f32) -> f32 {
         left.powf(right)
     }
@@ -92,22 +79,22 @@ impl Parser {
         term
     }
 
-    #[rule(Term -> bracketOpen Expression bracketClose)]
+    #[rule(Term -> BracketOpen Expression BracketClose)]
     fn bracketed_expr(_: &str, expr: f32, _: &str) -> f32 {
         expr
     }
 
-    #[rule(Term -> Term asterisk Term)]
+    #[rule(Term -> Term Asterisk Term)]
     fn term_mul(left: f32, _asterisk: &str, right: f32) -> f32 {
         left * right
     }
 
-    #[rule(Term -> Term slash Term)]
+    #[rule(Term -> Term Slash Term)]
     fn term_div(left: f32, _slash: &str, right: f32) -> f32 {
         left / right
     }
 
-    #[rule(Term -> number)]
+    #[rule(Term -> Number)]
     fn number(num: &str) -> f32 {
         // TODO: Allow returning Results
         num.parse().unwrap()

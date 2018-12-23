@@ -6,7 +6,7 @@ use prettytable::cell;
 use prettytable::row;
 
 use crate::parse;
-use yalr_codegen::EnumVariant;
+use yalr_codegen::{Nonterminal, Terminal};
 
 pub fn print_table(input_filename: &str, impl_type: Option<&str>) -> Result<(), Box<dyn Error>> {
     let parse_table = parse::generate_parse_table(input_filename, impl_type)?;
@@ -27,9 +27,7 @@ pub fn write_table_csv(
     Ok(())
 }
 
-fn generate_pretty_table(
-    parse_table: &yalr_core::ParseTable<EnumVariant, EnumVariant>,
-) -> pt::Table {
+fn generate_pretty_table(parse_table: &yalr_core::ParseTable<Terminal, Nonterminal>) -> pt::Table {
     let mut table = pt::Table::new();
 
     let mut title_row = row!["#", "LALR item closure", "Lookahead"];

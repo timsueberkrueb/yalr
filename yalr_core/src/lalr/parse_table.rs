@@ -4,7 +4,7 @@ use std::fmt;
 use std::hash::Hash;
 
 use crate::lalr::item::ItemNewtype;
-use crate::{Action, Assoc, Grammar, Item, State, Symbol};
+use crate::{Action, Assoc, Grammar, Item, Rule, State, Symbol};
 
 #[derive(Debug)]
 pub struct ParseTable<T, N>
@@ -23,7 +23,7 @@ where
 {
     /// Generate an LALR parse table according to LALR grammar rules
     pub fn generate(grammar: Grammar<T, N>) -> Result<Self, GenerationError<T>> {
-        ParseTableGenerator::new(grammar).generate()
+        ParseTableGenerator::from_grammar(grammar)?.generate()
     }
 }
 
@@ -34,6 +34,7 @@ where
 {
     grammar: Grammar<T, N>,
     first_sets: BTreeMap<N, BTreeSet<T>>,
+    start_rules: HashSet<Rule<T, N>>,
 }
 
 impl<T, N> ParseTableGenerator<T, N>
@@ -41,11 +42,22 @@ where
     T: fmt::Debug + fmt::Display + Ord + Clone + Eq + Hash,
     N: fmt::Debug + fmt::Display + Ord + Clone + Eq + Hash,
 {
-    fn new(grammar: Grammar<T, N>) -> Self {
+    fn from_grammar(grammar: Grammar<T, N>) -> Result<Self, GenerationError<T>> {
         let first_sets = BTreeMap::new();
-        Self {
-            grammar,
-            first_sets,
+        let start_rules: HashSet<_> = grammar
+            .rules
+            .iter()
+            .filter(|rule| rule.lhs == grammar.start)
+            .cloned()
+            .collect();
+        if !start_rules.is_empty() {
+            Ok(Self {
+                grammar,
+                first_sets,
+                start_rules,
+            })
+        } else {
+            Err(GenerationError::MissingStartRule)
         }
     }
 
@@ -178,15 +190,13 @@ where
             if !next_state.item_closure.is_empty() {
                 next_state.item_closure = self.closure(next_state.item_closure);
 
-                if next_state
+                let start_rule_at_end = next_state
                     .item_closure
                     .iter()
-                    .next()
-                    .unwrap()
-                    .is_pos_at_end()
-                    && next_state.item_closure.iter().next().unwrap().rule == self.grammar.rules[0]
-                {
-                    // Reaching the end of rule (0) in the next state means reaching the end of input.
+                    .find(|item| self.start_rules.contains(&item.rule) && item.is_pos_at_end());
+
+                if let Some(_rule) = start_rule_at_end {
+                    // Reaching the end of the start rule in the next state means reaching the end of input.
                     // S' ->  S  •  eof
                     states[current_state]
                         .action_map
@@ -435,6 +445,7 @@ pub enum GenerationError<T>
 where
     T: fmt::Display + fmt::Debug,
 {
+    MissingStartRule,
     ReduceReduceConflict {
         lookahead: T,
         first_rule: usize,
@@ -448,6 +459,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
+            GenerationError::MissingStartRule => write!(f, "Missing start rule"),
             GenerationError::ReduceReduceConflict {
                 lookahead,
                 first_rule,
@@ -473,3 +485,88 @@ where
 
 /// Type alias for LALR item sets
 type ItemSet<T, N> = HashSet<Item<T, N>>;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use matches::assert_matches;
+
+    // Helper macros enabling more declarative tests
+    macro_rules! symbols {
+        ($n:ident: $($i:ident),+) => {
+            #[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
+            enum $n {
+                $($i),+
+            }
+            impl $n {
+                fn set() -> HashSet<$n> {
+                    let mut set = HashSet::new();
+                    $(
+                        set.insert($n::$i);
+                    );+
+                    set
+                }
+            }
+            impl fmt::Display for $n {
+                fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                    match self {
+                        $(
+                            $n::$i => {
+                                write!(f, "{}", stringify!($i))
+                            }
+                        ),+
+                    }
+                }
+            }
+        }
+    }
+    macro_rules! terminals {
+        ($($i:ident),+) => {
+            symbols! { T: $($i),+ }
+            impl Into<Symbol<T, N>> for T {
+                fn into(self) -> Symbol<T, N> {
+                    Symbol::Terminal(self)
+                }
+            }
+        }
+    }
+    macro_rules! nonterminals {
+        ($($i:ident),+) => {
+            symbols! { N: $($i),+ }
+            impl Into<Symbol<T, N>> for N {
+                fn into(self) -> Symbol<T, N> {
+                    Symbol::Nonterminal(self)
+                }
+            }
+        }
+    }
+    macro_rules! rule {
+        ($lhs:expr => $($rhs:expr)+) => {
+            Rule { lhs: $lhs, rhs: vec![$($rhs.into()),+] }
+        }
+    }
+
+    #[test]
+    fn test_multiple_start_rules_accept() {
+        nonterminals! { S }
+        terminals! { A, B, End }
+
+        let rules = vec![rule![N::S => T::A T::End], rule![N::S => T::B T::End]];
+
+        let grammar = Grammar {
+            start: N::S,
+            end: T::End,
+            nonterminals: N::set(),
+            terminals: T::set(),
+            rules,
+            assoc_map: HashMap::new(),
+        };
+
+        let parse_table = ParseTable::generate(grammar).unwrap();
+
+        assert_matches!(parse_table.states[0].action_map[&T::A], Action::Shift(_));
+        assert_matches!(parse_table.states[0].action_map[&T::B], Action::Shift(_));
+        assert_matches!(parse_table.states[1].action_map[&T::End], Action::Accept);
+        assert_matches!(parse_table.states[2].action_map[&T::End], Action::Accept);
+    }
+}

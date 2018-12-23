@@ -5,12 +5,12 @@ use std::io::Read;
 
 use quote::quote;
 use syn::visit::Visit;
-use yalr_codegen::EnumVariant;
+use yalr_codegen::{Nonterminal, Terminal};
 
 pub fn generate_parse_table(
     filename: &str,
     impl_type: Option<&str>,
-) -> Result<yalr_core::ParseTable<EnumVariant, EnumVariant>, Box<dyn Error>> {
+) -> Result<yalr_core::ParseTable<Terminal, Nonterminal>, Box<dyn Error>> {
     let file: syn::File = parse_source_file(filename)?;
     let item_impl: &syn::ItemImpl = find_yalr_impl(&file, impl_type)?;
     let attr_stream: proc_macro2::TokenStream = find_attr_decl(&item_impl);
@@ -38,8 +38,8 @@ fn find_attr_decl(item_impl: &syn::ItemImpl) -> proc_macro2::TokenStream {
             }
         }
     }
-    // FIXME: Proper error handling
-    unreachable!();
+    eprintln!("Fatal error: This is a bug in YALR. Please report this.");
+    panic!("Failed to find lalr attribute");
 }
 
 fn find_yalr_impl<'a, 's>(

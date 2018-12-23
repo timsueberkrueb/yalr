@@ -1,13 +1,8 @@
 [package]
-name = "yalr_core"
+name = "test_utils"
 version = "0.1.0"
 authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
 edition = "2018"
 
-[dev-dependencies]
-matches = "0.1.8"
-
 [dependencies]
-
-[features]
-default = []
+yalr = { path = "../../yalr" }

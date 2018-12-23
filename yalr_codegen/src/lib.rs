@@ -9,31 +9,31 @@ use syn;
 
 use yalr_core as yalr;
 
-// FIXME: Those modules are currently unstable and not fit for public consumption
-// Replace the panics with proper error handling. While panicking is fine for the procedural macro,
-// the cli and possibly other applications could benefit from proper error handling
 pub mod codegen;
-pub mod enum_variant;
+pub mod error;
 pub mod grammar;
 pub mod parse;
+pub mod symbols;
 
-pub use crate::enum_variant::EnumVariant;
+pub use crate::symbols::{Nonterminal, Terminal};
 
 pub fn generate_parse_table(
     attr: proc_macro2::TokenStream,
     item_impl: &syn::ItemImpl,
-) -> Result<yalr::ParseTable<EnumVariant, EnumVariant>, Box<dyn Error>> {
-    let (terminal_type, nonterminal_type) = parse::parse_proc_macro_attr(attr);
+) -> Result<yalr::ParseTable<Terminal, Nonterminal>, Box<dyn Error>> {
+    let rule_fns = parse::parse_impl_items(&item_impl)?;
+    let impl_attrs: parse::ImplAttrs = parse::parse_impl_attrs(&item_impl)?;
 
-    let parse_ctx = parse::ParseCtx::new(&terminal_type, &nonterminal_type);
+    let start_nonterminal = Nonterminal::Start;
+    let end_terminal = Terminal::End;
 
-    let rule_fns = parse::parse_impl_items(&item_impl, &parse_ctx);
-    let impl_attrs: parse::ImplAttrs = parse::parse_impl_attrs(&item_impl, &parse_ctx);
+    let user_start_symbol = parse::parse_lalr_attr_start_symbol(attr)?;
 
     let grammar = grammar::generate_grammar(
         &rule_fns,
-        impl_attrs.start_nonterminal,
-        impl_attrs.end_terminal,
+        start_nonterminal,
+        user_start_symbol,
+        end_terminal,
         impl_attrs.assoc_map,
     );
     let parse_table = yalr::ParseTable::generate(grammar)?;

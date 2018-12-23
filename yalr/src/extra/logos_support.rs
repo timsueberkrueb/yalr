@@ -1,24 +1,24 @@
-use std::error::Error;
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use yalr_core::LALRParser;
+use crate::{ParseError, Parser};
 
-pub trait LogosSupport<'source, T, N, Input, O>
+pub trait LogosSupport<'source, T, Input, O>
 where
     Input: logos::Source<'source>,
-    T: logos::Logos,
+    T: logos::Logos + fmt::Display + fmt::Debug,
 {
-    fn parse_logos(lexer: logos::Lexer<T, Input>) -> Result<O, Box<dyn Error>>;
+    fn parse_logos(lexer: logos::Lexer<T, Input>) -> Result<O, ParseError<T>>;
 }
 
-impl<'source, T, N, Input, Output, P> LogosSupport<'source, T, N, Input, Output> for P
+impl<'source, T: 'source, Input, Output, P> LogosSupport<'source, T, Input, Output> for P
 where
     Input: logos::Source<'source> + 'source,
-    P: LALRParser<'source, T, N, <Input as logos::Source<'source>>::Slice, Output>,
-    T: logos::Logos,
+    P: Parser<'source, T, <Input as logos::Source<'source>>::Slice, Output>,
+    T: logos::Logos + fmt::Display + fmt::Debug,
 {
-    fn parse_logos(lexer: logos::Lexer<T, Input>) -> Result<Output, Box<dyn Error>> {
+    fn parse_logos(lexer: logos::Lexer<T, Input>) -> Result<Output, ParseError<T>> {
         let mut shim = LogosShim::wrap(lexer);
         P::parse(&mut shim)
     }
@@ -47,13 +47,16 @@ where
     }
 }
 
-impl<'source, T, Input, Slice> crate::LALRLexer<'source, T, Slice> for LogosShim<'source, T, Input>
+impl<'source, T, Input, Slice> crate::Lexer<'source, T, Slice> for LogosShim<'source, T, Input>
 where
     T: logos::Logos,
     Input: logos::Source<'source>,
     Slice: logos::Slice<'source> + 'source,
     Slice: std::convert::From<<Input as logos::Source<'source>>::Slice>,
 {
+    const ERROR: T = <T as logos::Logos>::ERROR;
+    const END: T = <T as logos::Logos>::END;
+
     fn advance(&mut self) {
         self.inner.advance();
     }

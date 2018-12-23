@@ -4,8 +4,14 @@ version = "0.1.0"
 authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
 edition = "2018"
 
+[dev-dependencies]
+yalr = { path = "../yalr" }
+lazy_static = "1.2.0"
+
 [dependencies]
 syn = "0.15"
+proc-macro2 = "0.4"
+quote = "0.6"
 yalr_core = { path = "../yalr_core" }
 yalr_codegen = { path = "../yalr_codegen" }
 
