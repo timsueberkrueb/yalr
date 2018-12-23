@@ -46,7 +46,7 @@ pub fn generate_parser_impl(
 
                 use lazy_static::lazy_static;
 
-                use yalr as yalr_core;
+                use yalr::yalr_trace;
 
                 yalr_trace!("trace is enabled");
 
