@@ -80,6 +80,8 @@ pub fn lalr(
     let parser_impl: syn::ItemImpl =
         syn::parse(cloned_input).expect("Failed to parse parser impl block");
 
+    let parser_type: &syn::Type = &parser_impl.self_ty;
+
     let rule_fns = parse::parse_impl_items(&parser_impl).expect("Failed to parse impl items");
 
     let start_nonterminal = Nonterminal::Start;
@@ -101,8 +103,13 @@ pub fn lalr(
         yalr::ParseTable::generate(grammar).expect("Error while generating parse table");
 
     let terminal_type: &syn::Type = &impl_attrs.terminal_type;
-    let generated_code =
-        codegen::generate_parser_impl(&parse_table, &rule_fns, terminal_type, &user_start_symbol);
+    let generated_code = codegen::generate_parser_impl(
+        &parser_type,
+        &parse_table,
+        &rule_fns,
+        terminal_type,
+        &user_start_symbol,
+    );
 
     let mut input = input;
     input.extend(generated_code);

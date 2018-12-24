@@ -10,6 +10,7 @@ use crate::parse::RuleFn;
 use crate::symbols::{Nonterminal, Terminal};
 
 pub fn generate_parser_impl(
+    parser_type: &syn::Type,
     parse_table: &yalr::ParseTable<Terminal, Nonterminal>,
     rule_fns: &[RuleFn],
     terminal_type: &syn::Type,
@@ -19,7 +20,7 @@ pub fn generate_parser_impl(
     let nonterminals: Vec<&Nonterminal> = return_types.keys().cloned().collect();
     let nonterminal_enum = generate_nonterminal_enum(&nonterminals[..]);
     let user_data_enum = generate_user_data_enum(&return_types);
-    let state_table_type = generate_state_table_type(&parse_table);
+    let state_table_type = generate_state_table_type(&parser_type, &parse_table);
     let output_enum = generate_output_enum();
     let parse_action_enum = generate_parse_action_enum();
     let stack_elem_struct = generate_stack_elem_struct();
@@ -33,7 +34,7 @@ pub fn generate_parser_impl(
         extern crate yalr;
         extern crate lazy_static;
 
-        impl<'source> yalr::Parser<'source, #terminal_type, #input_type, #output_type> for Parser
+        impl<'source> yalr::Parser<'source, #terminal_type, #input_type, #output_type> for #parser_type
         {
             fn parse<L: 'source>(lexer: &mut L) -> Result<#output_type, yalr::ParseError<#terminal_type>>
                 where
@@ -172,6 +173,7 @@ fn generate_parse_action_enum() -> proc_macro2::TokenStream {
 }
 
 fn generate_state_table_type(
+    parser_type: &syn::Type,
     table: &yalr::ParseTable<Terminal, Nonterminal>,
 ) -> proc_macro2::TokenStream {
     let mut terminals_sorted: Vec<_> = table.grammar.terminals.iter().cloned().collect();
@@ -190,7 +192,7 @@ fn generate_state_table_type(
     quote! {
         struct StateTable<'source, L: 'source>
         where
-            L: yalr::Lexer<'source, __TERMINAL_TYPE, <Parser as yalr::YALR<'source>>::Input>
+            L: yalr::Lexer<'source, __TERMINAL_TYPE, <#parser_type as yalr::YALR<'source>>::Input>
         {
             inner: [
                 (
@@ -206,7 +208,7 @@ fn generate_state_table_type(
 
         impl<'source, L: 'source> StateTable<'source, L>
         where
-            L: yalr::Lexer<'source, __TERMINAL_TYPE, <Parser as yalr::YALR<'source>>::Input>
+            L: yalr::Lexer<'source, __TERMINAL_TYPE, <#parser_type as yalr::YALR<'source>>::Input>
         {
             fn action(&self, state: usize, terminal: &__TERMINAL_TYPE) -> &ParseAction {
                 match self.map_terminal(terminal) {
