@@ -1,0 +1,16 @@
+[package]
+name = "bench"
+version = "0.1.0"
+authors = ["Daniel Bicek <dev@bicek.de>"]
+edition = "2018"
+
+[dependencies]
+criterion = "0.2.5"
+yalr = { path = "../yalr", features = ["logos"] }
+logos = "0.9"
+lazy_static = "1.1.0"
+
+
+[[bench]]
+name = "parse_benchmark"
+harness = false

@@ -7,4 +7,5 @@ members = [
     "examples/calculator",
     "tests/test_utils",
     "tests/unknown_terminals",
+    "bench"
 ]
