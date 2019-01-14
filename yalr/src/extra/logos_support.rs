@@ -16,7 +16,7 @@ impl<'source, T: 'source, Input, Output, P> LogosSupport<'source, T, Input, Outp
 where
     Input: logos::Source<'source> + 'source,
     P: Parser<'source, T, <Input as logos::Source<'source>>::Slice, Output>,
-    T: logos::Logos + fmt::Display + fmt::Debug,
+    T: logos::Logos + logos::source::WithSource<Input> + fmt::Display + fmt::Debug,
 {
     fn parse_logos(lexer: logos::Lexer<T, Input>) -> Result<Output, ParseError<T>> {
         let mut shim = LogosShim::wrap(lexer);
@@ -49,7 +49,7 @@ where
 
 impl<'source, T, Input, Slice> crate::Lexer<'source, T, Slice> for LogosShim<'source, T, Input>
 where
-    T: logos::Logos,
+    T: logos::Logos + logos::source::WithSource<Input>,
     Input: logos::Source<'source>,
     Slice: logos::Slice<'source> + 'source,
     Slice: std::convert::From<<Input as logos::Source<'source>>::Slice>,
