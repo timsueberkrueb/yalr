@@ -46,6 +46,8 @@ impl fmt::Display for Nonterminal {
 }
 
 #[derive(Logos, Ord, PartialOrd, Debug, Clone, Eq, PartialEq, Hash)]
+// Allowed whitespace: space, horizontal tab, line feed and carriage return
+#[logos(trivia = r"[\u0020\u0009\u000a\u000d]")]
 pub enum Terminal {
     // {m,n} notation is currently not supported
     #[regex = r#""([^"\\\t\n]|\\"|\\\\|\\/|\\b|\\f|\\n|\\r|\\t|\\u[a-fA-F0-9][a-fA-F0-9][a-fA-F0-9][a-fA-F0-9])*""#]
