@@ -1,8 +1,8 @@
 // FIXME: Upstream bug (https://github.com/maciejhirsz/logos/issues/66)
 #![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
 
-use std::fmt;
 use std::collections::HashMap;
+use std::fmt;
 
 use logos::Logos;
 use yalr::extra::LogosSupport;
@@ -25,24 +25,6 @@ pub enum JSONValue {
     True,
     False,
     Null,
-}
-
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
-enum Nonterminal {
-    Start,
-    Number,
-    String,
-    Value,
-    Object,
-    KVPairMap,
-    Array,
-    ArrayInner,
-}
-
-impl fmt::Display for Nonterminal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{:?}", self)
-    }
 }
 
 #[derive(Logos, Ord, PartialOrd, Debug, Clone, Eq, PartialEq, Hash)]
@@ -112,17 +94,17 @@ impl Parser {
     fn number(input: &str) -> JSONNumber {
         input.parse().unwrap()
     }
-    
+
     #[rule(Value -> NumberValue)]
     fn value_number(num: JSONNumber) -> JSONValue {
         JSONValue::Number(num)
     }
-    
+
     #[rule(Value -> StringValue)]
     fn value_string(string: JSONString) -> JSONValue {
         JSONValue::String(string)
     }
-    
+
     #[rule(Value -> Array)]
     fn value_array(arr: JSONArray) -> JSONValue {
         JSONValue::Array(arr)
@@ -132,7 +114,7 @@ impl Parser {
     fn value_object(obj: JSONObject) -> JSONValue {
         JSONValue::Object(obj)
     }
-    
+
     #[rule(Value -> Null)]
     fn value_null(_null: &str) -> JSONValue {
         JSONValue::Null
@@ -142,7 +124,7 @@ impl Parser {
     fn value_true(_true: &str) -> JSONValue {
         JSONValue::True
     }
-    
+
     #[rule(Value -> False)]
     fn value_false(_false: &str) -> JSONValue {
         JSONValue::False
@@ -154,31 +136,55 @@ impl Parser {
     }
 
     #[rule(Object -> Leftbrace StringValue Colon Value Rightbrace)]
-    fn object_one(_lbrace: &str, key: JSONString, _color: &str, value: JSONValue, _rbrace: &str) -> JSONObject {
+    fn object_one(
+        _lbrace: &str,
+        key: JSONString,
+        _color: &str,
+        value: JSONValue,
+        _rbrace: &str,
+    ) -> JSONObject {
         let mut res = HashMap::new();
         res.insert(key, value);
         res
     }
 
     #[rule(Object -> Leftbrace KVPairMap StringValue Colon Value Rightbrace)]
-    fn object_many(_lbrace: &str, mut kpm: KVPairMap, key: JSONString, _color: &str, value: JSONValue, _rbrace: &str) -> JSONObject {
+    fn object_many(
+        _lbrace: &str,
+        mut kpm: KVPairMap,
+        key: JSONString,
+        _color: &str,
+        value: JSONValue,
+        _rbrace: &str,
+    ) -> JSONObject {
         kpm.insert(key, value);
         kpm
     }
 
     #[rule(KVPairMap -> KVPairMap StringValue Colon Value Comma)]
-    fn kvpairmap_extend(mut kpm: KVPairMap, key: JSONString, _colon: &str, value: JSONValue, _comma: &str) -> KVPairMap {
+    fn kvpairmap_extend(
+        mut kpm: KVPairMap,
+        key: JSONString,
+        _colon: &str,
+        value: JSONValue,
+        _comma: &str,
+    ) -> KVPairMap {
         kpm.insert(key, value);
         kpm
     }
-    
+
     #[rule(KVPairMap -> StringValue Colon Value Comma)]
-    fn kvpairlist_begin(key: JSONString, _colon: &str, value: JSONValue, _comma: &str) -> KVPairMap {
+    fn kvpairlist_begin(
+        key: JSONString,
+        _colon: &str,
+        value: JSONValue,
+        _comma: &str,
+    ) -> KVPairMap {
         let mut kpm = HashMap::new();
         kpm.insert(key, value);
         kpm
     }
-    
+
     #[rule(Array -> Leftbracket Rightbracket)]
     fn array_empty(_lbracket: &str, _rbracket: &str) -> JSONArray {
         Vec::new()
@@ -190,9 +196,14 @@ impl Parser {
         res.push(val);
         res
     }
-    
+
     #[rule(Array -> Leftbracket ArrayInner Value Rightbracket)]
-    fn array_many(_lbracket: &str, mut inner: ArrayInner, val: JSONValue, _rbracket: &str) -> JSONArray {
+    fn array_many(
+        _lbracket: &str,
+        mut inner: ArrayInner,
+        val: JSONValue,
+        _rbracket: &str,
+    ) -> JSONArray {
         inner.push(val);
         inner
     }
@@ -211,17 +222,30 @@ impl Parser {
     }
 }
 
+#[cfg(test)]
 mod test {
-    use super::Parser;
-    use super::JSONValue;
     use super::JSONString;
+    use super::JSONValue;
+    use super::Parser;
     use std::collections::HashMap;
 
     #[test]
     fn test_json() {
-        assert_eq!(JSONValue::Number(153.12), Parser::parse_str("153.12").unwrap());
-        assert_eq!(JSONValue::String(String::from("Test")), Parser::parse_str(r#""Test""#).unwrap());
-        assert_eq!(JSONValue::Object(HashMap::new()), Parser::parse_str(r#"{}"#).unwrap());
-        assert_eq!(JSONValue::Array(Vec::new()), Parser::parse_str(r#"[]"#).unwrap());
+        assert_eq!(
+            JSONValue::Number(153.12),
+            Parser::parse_str("153.12").unwrap()
+        );
+        assert_eq!(
+            JSONValue::String(String::from("Test")),
+            Parser::parse_str(r#""Test""#).unwrap()
+        );
+        assert_eq!(
+            JSONValue::Object(HashMap::new()),
+            Parser::parse_str(r#"{}"#).unwrap()
+        );
+        assert_eq!(
+            JSONValue::Array(Vec::new()),
+            Parser::parse_str(r#"[]"#).unwrap()
+        );
     }
 }

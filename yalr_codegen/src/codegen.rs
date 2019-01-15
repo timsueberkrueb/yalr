@@ -99,6 +99,7 @@ fn generate_nonterminal_enum(nonterminals: &[&Nonterminal]) -> proc_macro2::Toke
     let variant_streams = &variant_streams;
     quote! {
         #[derive(PartialEq, Eq, Clone, Debug)]
+        #[allow(clippy::enum_variant_names)]  // allow variants prefixed with `UserData`
         enum Nonterminal {
             Start,
             #(#variant_streams),*
@@ -132,6 +133,7 @@ fn generate_user_data_enum(
 
     quote! {
         #[derive(Debug)]
+        #[allow(clippy::enum_variant_names)]  // allow variants prefixed with `UserData`
         enum UserData {
             #enum_variants
         }
