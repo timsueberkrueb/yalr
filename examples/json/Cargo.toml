@@ -1,7 +1,7 @@
 [package]
-name = "calculator"
+name = "yalrjson"
 version = "0.1.0"
-authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
+authors = ["Daniel Bicek dev@bicek.de"]
 edition = "2018"
 
 [dependencies]

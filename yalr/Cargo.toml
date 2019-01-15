@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 yalr_core = { path = "../yalr_core", optional = true }
 yalr_proc_macro = { path = "../yalr_proc_macro", optional = true }
-logos = { version = "0.9", optional = true }
+logos = { version = "0.10.0-rc1", optional = true }
 
 [features]
 default = ["proc_macro"]
