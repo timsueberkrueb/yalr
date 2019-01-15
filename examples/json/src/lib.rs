@@ -50,7 +50,7 @@ impl fmt::Display for Nonterminal {
 #[logos(trivia = r"[\u0020\u0009\u000a\u000d]")]
 pub enum Terminal {
     // {m,n} notation is currently not supported
-    #[regex = r#""([^"\\\t\n]|\\"|\\\\|\\/|\\b|\\f|\\n|\\r|\\t|\\u[a-fA-F0-9][a-fA-F0-9][a-fA-F0-9][a-fA-F0-9])*""#]
+    #[regex = r#""([^\u0000-\u001F"\\\t\n]|\\"|\\\\|\\/|\\b|\\f|\\n|\\r|\\t|\\u[a-fA-F0-9][a-fA-F0-9][a-fA-F0-9][a-fA-F0-9])*""#]
     String,
     #[regex = r#"-?(0|[1-9][0-9]*)(\.[0-9]+)?((e|E)(\+|-)?[0-9]+)?"#]
     Number,
