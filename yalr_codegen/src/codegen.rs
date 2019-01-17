@@ -30,6 +30,16 @@ pub fn generate_parser_impl(
     let input_type = quote! {  <Self as yalr::YALR<'source>>::Input };
     let output_type = quote! {  <Self as yalr::YALR<'source>>::Output };
 
+    #[cfg(feature = "nightly")]
+    let terminal_type_decl = quote! {
+        type __TERMINAL_TYPE<'s> = <#parser_type as yalr::YALR<'s>>::Terminal;
+    };
+    // TODO: Remove once type_alias_enum_variants (RFC 2338) gets stabilized
+    #[cfg(not(feature = "nightly"))]
+    let terminal_type_decl = quote! {
+        use self::#terminal_type as __TERMINAL_TYPE;
+    };
+
     let token_stream = quote! {
         extern crate yalr;
         extern crate lazy_static;
@@ -42,8 +52,7 @@ pub fn generate_parser_impl(
             {
                 #nonterminal_enum
 
-                // FIXME: Support types not defined in current module
-                use self::#terminal_type as __TERMINAL_TYPE;
+                #terminal_type_decl
 
                 use lazy_static::lazy_static;
 
@@ -191,10 +200,16 @@ fn generate_state_table_type(
     let (nonterminals_idx, nonterminals): (Vec<_>, Vec<_>) =
         nonterminals_sorted.iter().enumerate().unzip();
 
+    // TODO: Remove once type_alias_enum_variants (RFC 2338) gets stabilized
+    #[cfg(feature = "nightly")]
+    let terminal_type_arg = quote! { __TERMINAL_TYPE<'source>};
+    #[cfg(not(feature = "nightly"))]
+    let terminal_type_arg = quote! { __TERMINAL_TYPE};
+
     quote! {
         struct StateTable<'source, L: 'source>
         where
-            L: yalr::Lexer<'source, __TERMINAL_TYPE, <#parser_type as yalr::YALR<'source>>::Input>
+            L: yalr::Lexer<'source, #terminal_type_arg, <#parser_type as yalr::YALR<'source>>::Input>
         {
             inner: [
                 (
@@ -210,7 +225,7 @@ fn generate_state_table_type(
 
         impl<'source, L: 'source> StateTable<'source, L>
         where
-            L: yalr::Lexer<'source, __TERMINAL_TYPE, <#parser_type as yalr::YALR<'source>>::Input>
+            L: yalr::Lexer<'source, #terminal_type_arg, <#parser_type as yalr::YALR<'source>>::Input>
         {
             fn action(&self, state: usize, terminal: &__TERMINAL_TYPE) -> &ParseAction {
                 match self.map_terminal(terminal) {

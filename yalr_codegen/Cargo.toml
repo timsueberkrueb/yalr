@@ -3,6 +3,11 @@ name = "yalr_codegen"
 version = "0.1.0"
 authors = ["Tim Süberkrüb <dev@timsueberkrueb.io>"]
 edition = "2018"
+build = "build.rs"
+
+[build-dependencies]
+# TODO: Remove once type_alias_enum_variants (RFC 2338) gets stabilized
+rustc_version = "0.2.3"
 
 [dependencies]
 regex = "1"

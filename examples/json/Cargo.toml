@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Daniel Bicek dev@bicek.de"]
 edition = "2018"
 
+[build-dependencies]
+# TODO: Remove once type_alias_enum_variants (RFC 2338) gets stabilized
+rustc_version = "0.2.3"
+
 [dependencies]
 yalr = { path = "../../yalr", features = ["logos"] }
 logos = "0.10.0-rc1"
