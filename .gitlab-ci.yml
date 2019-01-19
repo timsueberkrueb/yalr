@@ -1,13 +1,8 @@
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/.cargo
 
-stages:
-  - test
-  - lint
-
 test:nightly:
   image: rustdocker/rust:nightly
-  stage: test
   before_script:
     - rustc --version
     - cargo --version
@@ -20,7 +15,6 @@ test:nightly:
 
 test:beta:
   image: rustdocker/rust:beta
-  stage: test
   before_script:
     - rustc --version
     - cargo --version
@@ -33,7 +27,6 @@ test:beta:
 
 test:stable:
   image: rustdocker/rust:stable
-  stage: test
   before_script:
     - rustc --version
     - cargo --version
@@ -46,7 +39,6 @@ test:stable:
 
 lint:
   image: rustdocker/rustfmt_clippy:nightly
-  stage: lint
   before_script:
     - rustc --version
     - cargo --version
@@ -58,7 +50,6 @@ lint:
 
 codestyle:
   image: rustdocker/rustfmt_clippy:nightly
-  stage: lint
   before_script:
     - rustc --version
     - cargo --version
