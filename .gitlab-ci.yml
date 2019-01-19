@@ -6,7 +6,33 @@ stages:
   - lint
 
 test:nightly:
-  image: rustlang/rust:nightly
+  image: rustdocker/rust:nightly
+  stage: test
+  before_script:
+    - rustc --version
+    - cargo --version
+  script:
+  - cargo build --verbose --all
+  - cargo test --verbose --all
+  cache:
+    paths:
+      - .cargo
+
+test:beta:
+  image: rustdocker/rust:beta
+  stage: test
+  before_script:
+    - rustc --version
+    - cargo --version
+  script:
+  - cargo build --verbose --all
+  - cargo test --verbose --all
+  cache:
+    paths:
+      - .cargo
+
+test:stable:
+  image: rustdocker/rust:stable
   stage: test
   before_script:
     - rustc --version
@@ -19,26 +45,24 @@ test:nightly:
       - .cargo
 
 lint:
-  image: rustlang/rust:nightly
+  image: rustdocker/rustfmt_clippy:nightly
   stage: lint
   before_script:
     - rustc --version
     - cargo --version
   script:
-    - rustup component add clippy
     - cargo clippy
   cache:
     paths:
       - .cargo
 
 codestyle:
-  image: rustlang/rust:nightly
+  image: rustdocker/rustfmt_clippy:nightly
   stage: lint
   before_script:
     - rustc --version
     - cargo --version
   script:
-    - rustup component add rustfmt-preview
     - cargo fmt -- --check
   cache:
     paths:
