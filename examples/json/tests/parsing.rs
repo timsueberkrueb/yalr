@@ -24,6 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#![allow(non_snake_case)]
+
 use yalrjson::Parser;
 #[test]
 fn y_string_unicode() {
@@ -1388,111 +1390,133 @@ fn n_number__plus_1() {
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_string_1st_surrogate_but_2nd_missing() {
     Parser::parse_str(r#"["\uDADA"]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_number_too_big_neg_int() {
     Parser::parse_str(r#"[-123123123123123123123123123123]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_string_invalid_lonely_surrogate() {
     Parser::parse_str(r#"["\ud800"]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_structure_UTF_dash_8_BOM_empty_object() {
     Parser::parse_str(r#"﻿{}"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_string_incomplete_surrogate_and_escape_valid() {
     Parser::parse_str(r#"["\uD800\n"]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_structure_500_nested_arrays() {
     Parser::parse_str(r#"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_number_very_big_negative_int() {
     Parser::parse_str(r#"[-237462374673276894279832749832423479823246327846]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_number_huge_exp() {
     Parser::parse_str(r#"[0.4e00669999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999969999999006]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_string_incomplete_surrogate_pair() {
     Parser::parse_str(r#"["\uDd1ea"]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_string_incomplete_surrogates_escape_valid() {
     Parser::parse_str(r#"["\uD800\uD800\n"]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_number_pos_double_huge_exp() {
     Parser::parse_str(r#"[1.5e+9999]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_number_real_underflow() {
     Parser::parse_str(r#"[123e-10000000]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_string_1st_valid_surrogate_2nd_invalid() {
     Parser::parse_str(r#"["\uD888\u1234"]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_number_too_big_pos_int() {
     Parser::parse_str(r#"[100000000000000000000]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_string_inverted_surrogates_U_plus_1D11E() {
     Parser::parse_str(r#"["\uDd1e\uD834"]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_number_neg_int_huge_exp() {
     Parser::parse_str(r#"[-1e+9999]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_object_key_lone_2nd_surrogate() {
     Parser::parse_str(r#"{"\uDFAA":0}"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_number_double_huge_neg_exp() {
     Parser::parse_str(r#"[123.456e-789]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_number_real_pos_overflow() {
     Parser::parse_str(r#"[123123e100000]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_string_lone_second_surrogate() {
     Parser::parse_str(r#"["\uDFAA"]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_string_invalid_surrogate() {
     Parser::parse_str(r#"["\ud800abc"]"#);
 }
 
 #[test]
+#[allow(unused_must_use)]
 fn i_number_real_neg_overflow() {
     Parser::parse_str(r#"[-123123e100000]"#);
 }
