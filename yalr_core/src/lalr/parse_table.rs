@@ -266,7 +266,12 @@ where
                                 lookahead: l.clone(),
                             });
                         }
-                        Some(Action::Accept) => unreachable!(),
+                        Some(Action::Accept) => {
+                            return Err(GenerationError::AcceptReduceConflict {
+                                rule: item.rule_idx,
+                                lookahead: l.clone(),
+                            });
+                        }
                         None => {
                             // Key does not exists, no conflict
                             actions.insert(l.clone(), Action::Reduce(item.rule_idx));
@@ -420,30 +425,40 @@ where
     ///
     /// The `FIRST` set of a terminal `t` `FIRST(T) = {t}`.
     fn first_set(&self, symbol: Symbol<T, N>) -> BTreeSet<T> {
+        let mut lookahead = BTreeSet::new();
+
         match symbol {
             Symbol::Terminal(t) => {
-                let mut lookahead = BTreeSet::new();
                 lookahead.insert(t);
-                lookahead
             }
             Symbol::Nonterminal(n) => {
-                let mut lookahead = BTreeSet::new();
-                for rule in self.grammar.rules.iter().filter(|r| r.lhs == n) {
-                    match &rule.rhs[0] {
-                        Symbol::Terminal(t) => {
-                            lookahead.insert(t.clone());
-                        }
-                        Symbol::Nonterminal(n2) => {
-                            if *n2 == n {
-                                continue;
+                let mut processed = HashSet::new();
+                let mut unprocessed = Vec::new();
+                unprocessed.push(n);
+
+                while !unprocessed.is_empty() {
+                    let n = unprocessed.pop().unwrap();
+                    processed.insert(n.clone());
+
+                    for rule in self.grammar.rules.iter().filter(|r| r.lhs == n) {
+                        match &rule.rhs[0] {
+                            Symbol::Terminal(t) => {
+                                lookahead.insert(t.clone());
                             }
-                            lookahead.append(&mut self.first_set(Symbol::Nonterminal(n2.clone())));
+                            Symbol::Nonterminal(n2) => {
+                                if processed.contains(n2) {
+                                    continue;
+                                } else {
+                                    unprocessed.push(n2.clone());
+                                }
+                            }
                         }
                     }
                 }
-                lookahead
             }
         }
+
+        lookahead
     }
 }
 
@@ -462,6 +477,10 @@ where
         lookahead: T,
         rule: usize,
         shift: usize,
+    },
+    AcceptReduceConflict {
+        lookahead: T,
+        rule: usize,
     },
 }
 
@@ -489,6 +508,11 @@ where
                 f,
                 "Shift-reduce conflict between shift {} and reduce {} for lookahead {}",
                 shift, rule, lookahead
+            ),
+            GenerationError::AcceptReduceConflict { lookahead, rule } => write!(
+                f,
+                "Accept-reduce conflict between accept and rule {} for lookahead {}",
+                rule, lookahead
             ),
         }
     }
@@ -565,6 +589,33 @@ mod test {
         ($lhs:expr => $($rhs:expr)+) => {
             Rule { lhs: $lhs, rhs: vec![$($rhs.into()),+] }
         }
+    }
+
+    #[test]
+    fn test_accept_reduce_conflict() {
+        nonterminals! { S, E }
+        terminals! { A, B, End }
+
+        let rules = vec![
+            rule![N::S => N::E T::End],
+            rule![N::E => N::S T::A N::E],
+            rule![N::E => N::S T::B N::E],
+        ];
+
+        let grammar = Grammar {
+            start: N::S,
+            end: T::End,
+            nonterminals: N::set(),
+            terminals: T::set(),
+            rules,
+            assoc_map: HashMap::new(),
+        };
+
+        let parse_table_result = ParseTable::generate(grammar);
+        assert_matches!(
+            parse_table_result,
+            Err(GenerationError::AcceptReduceConflict { .. })
+        )
     }
 
     #[test]
