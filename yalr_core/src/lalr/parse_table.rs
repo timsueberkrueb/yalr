@@ -241,15 +241,22 @@ where
                 for l in item.lookahead.iter().by_ref() {
                     // Attempt to handle Shift-Reduce conflict using associativity and priority rules
                     match states[current_state].action_map.get(&l) {
-                        Some(Action::Shift(_)) => {
+                        Some(Action::Shift(shift)) => {
                             // TODO: Support precedence similar to how YACC/Bison does it
-                            let assoc = self.grammar.assoc_map.get(&l).unwrap_or(&Assoc::Left);
+                            let assoc = self.grammar.assoc_map.get(&l);
                             match assoc {
-                                Assoc::Left => {
+                                None => {
+                                    return Err(GenerationError::ShiftReduceConflict {
+                                        lookahead: l.clone(),
+                                        rule: item.rule_idx,
+                                        shift: *shift,
+                                    });
+                                }
+                                Some(Assoc::Left) => {
                                     // Replace shift with reduce
                                     actions.insert(l.clone(), Action::Reduce(item.rule_idx));
                                 }
-                                Assoc::Right => {} // Keep shift
+                                Some(Assoc::Right) => {} // Keep shift
                             }
                         }
                         Some(Action::Reduce(first_rule)) => {
@@ -451,6 +458,11 @@ where
         first_rule: usize,
         second_rule: usize,
     },
+    ShiftReduceConflict {
+        lookahead: T,
+        rule: usize,
+        shift: usize,
+    },
 }
 
 impl<T> fmt::Display for GenerationError<T>
@@ -466,8 +478,17 @@ where
                 second_rule,
             } => write!(
                 f,
-                "Reduce-reduce conflict rules {} and {} for lookahead {}",
+                "Reduce-reduce conflict between rules {} and {} for lookahead {}",
                 first_rule, second_rule, lookahead
+            ),
+            GenerationError::ShiftReduceConflict {
+                lookahead,
+                rule,
+                shift,
+            } => write!(
+                f,
+                "Shift-reduce conflict between shift {} and reduce {} for lookahead {}",
+                shift, rule, lookahead
             ),
         }
     }
@@ -544,6 +565,61 @@ mod test {
         ($lhs:expr => $($rhs:expr)+) => {
             Rule { lhs: $lhs, rhs: vec![$($rhs.into()),+] }
         }
+    }
+
+    #[test]
+    fn test_shift_reduce_conflict() {
+        nonterminals! { S, E }
+        terminals! { A, B, End }
+
+        let rules = vec![
+            rule![N::S => N::E T::End],
+            rule![N::E => N::E T::A N::E],
+            rule![N::E => N::E T::B N::E],
+        ];
+
+        let grammar = Grammar {
+            start: N::S,
+            end: T::End,
+            nonterminals: N::set(),
+            terminals: T::set(),
+            rules,
+            assoc_map: HashMap::new(),
+        };
+
+        let parse_table_result = ParseTable::generate(grammar);
+
+        assert_matches!(
+            parse_table_result,
+            Err(GenerationError::ShiftReduceConflict { .. })
+        );
+    }
+
+    #[test]
+    fn test_assoc_solves_shift_reduce_conflict() {
+        nonterminals! { S, E }
+        terminals! { A, B, End }
+
+        let rules = vec![
+            rule![N::S => N::E T::End],
+            rule![N::E => N::E T::A N::E],
+            rule![N::E => N::E T::B N::E],
+        ];
+
+        let mut assoc_map = HashMap::new();
+        assoc_map.insert(T::A, Assoc::Left);
+        assoc_map.insert(T::B, Assoc::Left);
+
+        let grammar = Grammar {
+            start: N::S,
+            end: T::End,
+            nonterminals: N::set(),
+            terminals: T::set(),
+            rules,
+            assoc_map,
+        };
+
+        ParseTable::generate(grammar).unwrap();
     }
 
     #[test]
