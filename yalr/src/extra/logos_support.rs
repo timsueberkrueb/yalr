@@ -47,12 +47,10 @@ where
     }
 }
 
-impl<'source, T, Input, Slice> crate::Lexer<'source, T, Slice> for LogosShim<'source, T, Input>
+impl<'source, T, Input> crate::Lexer<'source, T, Input::Slice> for LogosShim<'source, T, Input>
 where
     T: logos::Logos + logos::source::WithSource<Input>,
     Input: logos::Source<'source>,
-    Slice: logos::Slice<'source> + 'source,
-    Slice: std::convert::From<<Input as logos::Source<'source>>::Slice>,
 {
     const ERROR: T = <T as logos::Logos>::ERROR;
     const END: T = <T as logos::Logos>::END;
@@ -69,7 +67,7 @@ where
         self.inner.range()
     }
 
-    fn slice(&self) -> Slice {
-        self.inner.slice().into()
+    fn slice(&self) -> Input::Slice {
+        self.inner.slice()
     }
 }
