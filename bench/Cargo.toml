@@ -5,11 +5,12 @@ authors = ["Daniel Bicek <dev@bicek.de>"]
 edition = "2018"
 
 [dependencies]
-criterion = "0.2.5"
+criterion = "0.2.6"
 yalr = { path = "../yalr", features = ["logos"] }
-logos = "0.9"
+logos = "0.10.0-rc1"
 lazy_static = "1.1.0"
-
+rand = "0.6"
+rand_xorshift = "0.1"
 
 [[bench]]
 name = "parse_benchmark"
