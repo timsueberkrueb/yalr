@@ -58,3 +58,14 @@ codestyle:
   cache:
     paths:
       - .cargo
+
+compare-benchmarks:
+  image: rustdocker/rust:stable
+  allow_failure: true
+  except: [master]
+  script:
+    - apt-get update && apt-get install -y build-essential libboost-dev rsync jq curl gnuplot
+    - cargo bench
+  artifacts:
+    paths: [bench/target/criterion]
+    
