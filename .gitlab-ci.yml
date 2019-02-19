@@ -38,7 +38,7 @@ test:stable:
       - .cargo
 
 lint:
-  image: rustdocker/rustfmt_clippy:nightly
+  image: rustdocker/rustfmt_clippy:stable
   before_script:
     - rustc --version
     - cargo --version
@@ -49,7 +49,7 @@ lint:
       - .cargo
 
 codestyle:
-  image: rustdocker/rustfmt_clippy:nightly
+  image: rustdocker/rustfmt_clippy:stable
   before_script:
     - rustc --version
     - cargo --version
