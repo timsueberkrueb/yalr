@@ -1,6 +1,7 @@
 // FIXME: Upstream bug (https://github.com/maciejhirsz/logos/issues/66)
 #![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
 
+#[macro_use]
 extern crate criterion;
 use criterion::Criterion;
 
@@ -10,9 +11,7 @@ use rand::SeedableRng;
 
 extern crate rand_xorshift;
 
-// A Parser for Benchmarking
 use std::fmt;
-use std::time::Duration;
 
 use logos::Logos;
 use yalr::extra::LogosSupport;
@@ -110,40 +109,33 @@ pub fn demo_data_gen(len: usize, depth: f64) -> String {
     res
 }
 
-fn criterion_benchmark(c: &mut Criterion) {
-    let max = 25_u32;
+fn parse_bench(c: &mut Criterion) {
+    const TEST_SIZES: [usize; 3] = [10, 10_000, 100_000];
     c.bench_function_over_inputs(
         "parse_correct_low_nesting",
-        |c, &i| {
-            let test_str = demo_data_gen(i, 0.1);
+        |c, i| {
+            let test_str = demo_data_gen(**i, 0.1);
             c.iter(|| Parser::parse_str(&test_str).unwrap())
         },
-        (1..max).map(|x| 2_usize.pow(x)),
+        TEST_SIZES.iter(),
     );
     c.bench_function_over_inputs(
         "parse_correct_medium_nesting",
-        |c, &i| {
-            let test_str = demo_data_gen(i, 0.5);
+        |c, i| {
+            let test_str = demo_data_gen(**i, 0.5);
             c.iter(|| Parser::parse_str(&test_str).unwrap())
         },
-        (1..max).map(|x| 2_usize.pow(x)),
+        TEST_SIZES.iter(),
     );
     c.bench_function_over_inputs(
         "parse_correct_high_nesting",
-        |c, &i| {
-            let test_str = demo_data_gen(i, 0.9);
+        |c, i| {
+            let test_str = demo_data_gen(**i, 0.9);
             c.iter(|| Parser::parse_str(&test_str).unwrap())
         },
-        (1..max).map(|x| 2_usize.pow(x)),
+        TEST_SIZES.iter(),
     );
 }
 
-fn main() {
-    let mut c = Criterion::default()
-        .measurement_time(Duration::from_millis(100))
-        .warm_up_time(Duration::from_millis(100))
-        .sample_size(2)
-        .configure_from_args();
-    criterion_benchmark(&mut c);
-    c.final_summary();
-}
+criterion_group!(benches, parse_bench);
+criterion_main!(benches);

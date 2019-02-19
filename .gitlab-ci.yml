@@ -59,7 +59,7 @@ codestyle:
     paths:
       - .cargo
 
-compare-benchmarks:
+benchmark:
   image: rustdocker/rust:stable
   allow_failure: true
   except: [master]
